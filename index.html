@@ -115,7 +115,12 @@ nav a:hover{color:var(--paper)}
 }
 .hs:hover .tag, .hs:focus-visible .tag{opacity:1; transform:translateY(-50%) translateX(0)}
 .hs.active .dot{background:var(--paper); animation:none}
-@media(max-width:720px){ .hs .tag{display:none} .hs .dot{width:17px;height:17px} }
+@media(max-width:720px){
+  .hs .tag{display:none}
+  .hs .dot{width:11px; height:11px; border-width:1.5px}
+  .hs .dot{animation:pulseMini 2.4s infinite}
+}
+@keyframes pulseMini{0%{box-shadow:0 0 0 0 rgba(239,27,125,.5)}70%{box-shadow:0 0 0 8px rgba(239,27,125,0)}100%{box-shadow:0 0 0 0 rgba(239,27,125,0)}}
 
 /* viewer controls */
 .vctl{
@@ -825,9 +830,9 @@ const ASPECTO_REF = 1.6;                  // proporção para a qual as vistas f
 function distanciaMinima(aspecto){
   const vfov = camera.fov*Math.PI/180;
   const hfov = 2*Math.atan(Math.tan(vfov/2)*aspecto);
-  const dh = 31.0 / Math.tan(hfov/2);     // meia-largura do protótipo (com a gaveta)
+  const dh = 30.0 / Math.tan(hfov/2);     // meia-largura do protótipo (com a gaveta)
   const dv = 17.5 / Math.tan(vfov/2);     // do alvo até o topo do cenário
-  return (Math.max(dh,dv) + D/2) * 1.10;
+  return (Math.max(dh,dv) + D/2) * 1.04;
 }
 let fator = 1;
 function atualizarFator(){
