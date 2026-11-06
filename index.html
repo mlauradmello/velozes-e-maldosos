@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Velozes e Maldosos — protótipo interativo</title>
+<meta name="description" content="Visualizador 3D interativo do Velozes e Maldosos: um jogo de corrida de fliperama feito com Arduino.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" href="img/logo-vm.png">
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700;1,900&family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#08080b; --ink2:#0e0e13; --ink3:#15151d; --line:#24242e;
+  --pink:#ef1b7d; --pink2:#ff5ea8; --pink-dim:#8d1049;
+  --gold:#d6ab46; --paper:#f3efe9; --muted:#9b93a6;
+  --blue:#3ec8f0; --green:#3ee874; --red:#ff3b4d;
+  --display:"Abril Fatface",Georgia,serif;   /* logotipo */
+  --head:"Playfair Display",Georgia,serif;   /* títulos */
+  --body:"Inter",system-ui,-apple-system,sans-serif;
+  --mono:"Space Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--ink); color:var(--paper);
+  font-family:var(--body); font-weight:300; line-height:1.65;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+h1,h2,h3{font-family:var(--head); font-weight:900; line-height:1.0; margin:0; letter-spacing:-0.012em}
+a{color:inherit}
+.wrap{width:min(1180px,92vw); margin-inline:auto}
+.eyebrow{
+  font-family:var(--mono); font-size:11px; letter-spacing:.24em; text-transform:uppercase;
+  color:var(--pink2); margin:0 0 18px;
+}
+.eyebrow b{color:var(--muted); font-weight:400}
+
+/* ---------- nav ---------- */
+nav{
+  position:sticky; top:0; z-index:60; backdrop-filter:blur(14px);
+  background:color-mix(in srgb, var(--ink) 82%, transparent);
+  border-bottom:1px solid var(--line);
+}
+nav .wrap{display:flex; align-items:center; gap:28px; height:62px}
+.brand{display:flex; align-items:center; gap:11px; text-decoration:none; white-space:nowrap}
+.brand img{width:34px; height:34px; display:block; flex:0 0 auto}
+.brand span{font-family:var(--display); font-weight:400; font-size:17px; letter-spacing:.01em; color:var(--pink); transform:scaleX(.95); transform-origin:left}
+.brand span i{color:var(--paper); font-style:normal; font-size:.6em; vertical-align:.12em; margin-inline:.38em}
+@media(max-width:420px){ .brand span{font-size:14px} }
+nav ul{display:flex; gap:24px; list-style:none; margin:0 0 0 auto; padding:0; font-size:13px; font-weight:400}
+nav a{text-decoration:none; color:var(--muted); transition:color .2s}
+nav a:hover{color:var(--paper)}
+@media(max-width:720px){ nav ul{display:none} }
+
+/* ---------- viewer ---------- */
+.viewer{
+  scroll-margin-top:72px;
+  position:relative; height:min(84svh,760px); min-height:470px; overflow:hidden;
+  background:
+    radial-gradient(90% 70% at 50% 18%, #1d1626 0%, #110f19 42%, #07070b 100%);
+  border-bottom:1px solid var(--line);
+}
+.viewer::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(60% 55% at 50% 42%, transparent 55%, rgba(0,0,0,.55) 100%);
+}
+#scene{position:absolute; inset:0; display:block; width:100%; height:100%; touch-action:none}
+#marks{position:absolute; inset:0; pointer-events:none; z-index:3}
+
+.hero-title{
+  position:absolute; left:0; right:0; top:min(5vh,34px); text-align:center; z-index:2; pointer-events:none;
+  padding-inline:16px;
+}
+.hero-title h1{
+  font-family:var(--display); font-weight:400;
+  font-size:clamp(28px,6.6vw,70px); letter-spacing:.005em; line-height:1.05;
+  color:var(--pink); text-shadow:0 0 44px rgba(239,27,125,.34);
+}
+.hero-title h1 em{font-style:normal; color:var(--paper); font-size:.5em; vertical-align:.14em; margin-inline:.42em}
+.hero-title p{
+  margin:12px 0 0; font-family:var(--mono); font-size:clamp(9px,1.5vw,11px);
+  letter-spacing:.3em; text-transform:uppercase; color:var(--muted);
+}
+
+/* loader */
+#loader{
+  position:absolute; inset:0; z-index:8; display:grid; place-items:center;
+  background:var(--ink); transition:opacity .6s ease; text-align:center; padding:20px;
+}
+#loader.gone{opacity:0; pointer-events:none}
+.spin{width:38px;height:38px;border:2px solid #2a2434;border-top-color:var(--pink);border-radius:50%;animation:sp 1s linear infinite;margin:0 auto 16px}
+@keyframes sp{to{transform:rotate(360deg)}}
+#loader p{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin:0}
+#loader .err{color:var(--pink2); max-width:420px; font-family:var(--body); letter-spacing:0; text-transform:none; font-size:14px; line-height:1.6}
+
+/* hotspot markers */
+.hs{
+  position:absolute; left:0; top:0; pointer-events:auto; cursor:pointer; background:none; border:0; padding:0;
+  transition:opacity .25s;
+}
+.hs.off{opacity:0; pointer-events:none}
+.hs .dot{
+  display:block; width:15px; height:15px; border-radius:50%;
+  background:var(--pink); border:2px solid rgba(255,255,255,.9);
+  box-shadow:0 0 0 0 rgba(239,27,125,.6); animation:pulse 2.4s infinite;
+}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(239,27,125,.55)}70%{box-shadow:0 0 0 15px rgba(239,27,125,0)}100%{box-shadow:0 0 0 0 rgba(239,27,125,0)}}
+.hs .tag{
+  position:absolute; left:22px; top:50%; transform:translateY(-50%);
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+  white-space:nowrap; background:rgba(8,8,11,.84); border:1px solid var(--line);
+  padding:5px 10px; border-radius:999px; color:var(--paper);
+  opacity:0; transform:translateY(-50%) translateX(-5px); transition:.22s;
+}
+.hs:hover .tag, .hs:focus-visible .tag{opacity:1; transform:translateY(-50%) translateX(0)}
+.hs.active .dot{background:var(--paper); animation:none}
+@media(max-width:720px){ .hs .tag{display:none} .hs .dot{width:17px;height:17px} }
+
+/* viewer controls */
+.vctl{
+  position:absolute; right:14px; bottom:14px; z-index:4; display:flex; flex-direction:column; gap:7px;
+}
+.vctl button, .pill{
+  width:38px; height:38px; border-radius:11px; border:1px solid var(--line);
+  background:rgba(14,14,19,.85); color:var(--paper); cursor:pointer; font-size:16px;
+  display:grid; place-items:center; backdrop-filter:blur(8px); transition:.18s; font-family:var(--body);
+}
+.vctl button:hover{border-color:var(--pink); color:var(--pink2)}
+.hint{
+  position:absolute; left:50%; transform:translateX(-50%); bottom:16px; z-index:2; pointer-events:none;
+  font-family:var(--mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:#6e6679;
+  text-align:center; transition:opacity .4s;
+}
+.hint.gone{opacity:0}
+
+/* ---------- info panel ---------- */
+#panel{
+  position:fixed; z-index:70; right:0; top:0; height:100svh; width:min(400px,88vw);
+  background:linear-gradient(180deg,#121119,#0a0a0e); border-left:1px solid var(--line);
+  transform:translateX(102%); transition:transform .42s cubic-bezier(.22,1,.36,1);
+  padding:30px 28px 40px; overflow-y:auto; box-shadow:-24px 0 70px rgba(0,0,0,.6);
+}
+#panel.open{transform:none}
+#panel .close{
+  position:absolute; right:18px; top:18px; width:32px;height:32px;border-radius:9px;
+  border:1px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; font-size:16px;
+}
+#panel .close:hover{color:var(--paper); border-color:var(--pink)}
+#panel h3{font-family:var(--head); font-size:29px; margin:4px 0 14px; color:var(--paper)}
+#panel .lead{color:#cfc8d6; font-size:15px; margin:0 0 20px}
+#panel ul{margin:0; padding:0; list-style:none; border-top:1px solid var(--line)}
+#panel li{
+  padding:13px 0; border-bottom:1px solid var(--line); font-size:13.5px; color:#b8b0c2;
+  display:flex; gap:12px;
+}
+#panel li b{color:var(--paper); font-weight:500; flex:0 0 108px; font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; padding-top:3px}
+@media(max-width:720px){
+  #panel{top:auto; bottom:0; height:auto; max-height:78svh; width:100%; border-left:0; border-top:1px solid var(--line);
+    border-radius:20px 20px 0 0; transform:translateY(103%); padding:26px 22px 34px}
+  #panel li{flex-direction:column; gap:3px}
+  #panel li b{flex:none}
+}
+#scrim{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:65; opacity:0; pointer-events:none; transition:opacity .4s}
+#scrim.on{opacity:1; pointer-events:auto}
+
+/* ---------- race HUD ---------- */
+.race{
+  position:absolute; left:50%; transform:translateX(-50%); bottom:54px; z-index:5;
+  width:min(620px,92vw); text-align:center;
+}
+.race .start{
+  font-family:var(--mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+  background:var(--pink); color:#fff; border:0; padding:13px 26px; border-radius:999px; cursor:pointer;
+  box-shadow:0 10px 34px rgba(239,27,125,.36); transition:.2s;
+}
+.race .start:hover{transform:translateY(-2px); box-shadow:0 14px 40px rgba(239,27,125,.5)}
+.race .play{display:none; gap:12px; align-items:stretch}
+.race.live .play{display:flex}
+.race.live .start{display:none}
+.lane-ui{
+  flex:1; background:rgba(10,10,14,.84); border:1px solid var(--line); border-radius:15px;
+  padding:11px 13px; backdrop-filter:blur(10px);
+}
+.lane-ui .nm{font-family:var(--mono); font-size:9.5px; letter-spacing:.17em; text-transform:uppercase; color:var(--muted); display:flex; justify-content:space-between; margin-bottom:8px}
+.lane-ui .bar{height:7px; background:#1d1d26; border-radius:99px; overflow:hidden}
+.lane-ui .fill{height:100%; width:0%; border-radius:99px; transition:width .12s linear}
+.lane-ui.g .fill{background:linear-gradient(90deg,#1a7e3c,var(--green))}
+.lane-ui.r .fill{background:linear-gradient(90deg,#9e1a26,var(--red))}
+.lane-ui button{
+  margin-top:10px; width:100%; border:0; border-radius:10px; padding:11px; cursor:pointer;
+  font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:#05060a; font-weight:700; transition:transform .06s;
+}
+.lane-ui.g button{background:var(--green)}
+.lane-ui.r button{background:var(--red); color:#fff}
+.lane-ui button:active{transform:scale(.96)}
+.countdown{
+  position:absolute; inset:0; display:none; place-items:center; z-index:6; pointer-events:none;
+  font-family:var(--head); font-weight:900; font-size:clamp(70px,16vw,170px); color:var(--paper);
+  text-shadow:0 0 50px rgba(239,27,125,.6);
+}
+.countdown.on{display:grid}
+.winner{
+  position:absolute; left:50%; top:46%; transform:translate(-50%,-50%) scale(.9); z-index:6;
+  opacity:0; pointer-events:none; transition:.35s cubic-bezier(.22,1,.36,1); text-align:center;
+}
+.winner.on{opacity:1; transform:translate(-50%,-50%) scale(1)}
+.winner span{font-family:var(--mono); font-size:11px; letter-spacing:.3em; text-transform:uppercase; color:var(--muted)}
+.winner strong{display:block; font-family:var(--head); font-weight:900; font-size:clamp(34px,6vw,58px); margin-top:6px}
+@media(max-width:600px){ .race{bottom:46px} .lane-ui .nm{font-size:8.5px} }
+
+/* ---------- sections ---------- */
+section{padding:clamp(66px,9vw,120px) 0; border-bottom:1px solid var(--line); scroll-margin-top:72px}
+.sec-head{max-width:720px; margin-bottom:clamp(34px,5vw,54px)}
+.sec-head h2{font-size:clamp(32px,5.6vw,58px)}
+.sec-head h2 i{font-style:italic; color:var(--pink); font-weight:700}
+.sec-head p{color:var(--muted); font-size:clamp(15px,2vw,17.5px); margin:18px 0 0; max-width:60ch}
+
+.cols{display:grid; grid-template-columns:1.15fr .85fr; gap:clamp(30px,5vw,70px); align-items:start}
+@media(max-width:860px){ .cols{grid-template-columns:1fr} }
+.prose p{color:#c6bfd0; font-size:16.5px; margin:0 0 20px}
+.prose p:last-child{margin-bottom:0}
+.prose strong{color:var(--paper); font-weight:600}
+.pull{
+  border-left:2px solid var(--pink); padding:4px 0 4px 22px; margin:30px 0;
+  font-family:var(--head); font-weight:700; font-style:italic; font-size:clamp(19px,2.6vw,25px);
+  line-height:1.35; color:var(--paper);
+}
+.sidecard{
+  background:linear-gradient(170deg,#141220,#0c0c11); border:1px solid var(--line);
+  border-radius:18px; padding:26px;
+}
+.sidecard h4{font-family:var(--mono); font-size:10.5px; letter-spacing:.2em; text-transform:uppercase; color:var(--pink2); margin:0 0 16px; font-weight:400}
+.sidecard ul{margin:0; padding:0; list-style:none}
+.sidecard li{padding:11px 0; border-top:1px solid var(--line); color:#b9b1c4; font-size:14px; display:flex; gap:14px}
+.sidecard li:first-child{border-top:0; padding-top:0}
+.sidecard li span{color:var(--gold); font-family:var(--mono); font-size:11px; padding-top:2px; flex:0 0 auto}
+
+.steps{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:18px}
+.step{
+  background:linear-gradient(170deg,#131119,#0b0b0f); border:1px solid var(--line);
+  border-radius:16px; padding:26px 22px; position:relative; overflow:hidden;
+}
+.step::before{
+  content:attr(data-n); position:absolute; right:14px; top:2px;
+  font-family:var(--head); font-weight:900; font-size:72px; color:#1a1722; line-height:1;
+}
+.step h3{font-size:20px; margin-bottom:9px; position:relative}
+.step p{margin:0; font-size:14px; color:#aaa2b6; position:relative}
+
+/* anel por célula: células vazias da última linha não viram bloco cinza */
+.specs{display:grid; grid-template-columns:repeat(1,1fr); gap:1px; border-radius:16px; overflow:hidden; box-shadow:0 0 0 1px var(--line)}
+@media(min-width:560px){ .specs{grid-template-columns:repeat(3,1fr)} }
+.spec{background:var(--ink2); padding:22px 20px; box-shadow:0 0 0 1px var(--line)}
+.spec dt{font-family:var(--mono); font-size:10px; letter-spacing:.17em; text-transform:uppercase; color:var(--muted); margin-bottom:9px}
+.spec dd{margin:0; font-family:var(--head); font-weight:800; font-size:22px; color:var(--paper)}
+.spec dd small{display:block; font-family:var(--body); font-weight:300; font-size:12.5px; color:var(--muted); margin-top:5px; line-height:1.5}
+
+.gallery{display:grid; grid-template-columns:repeat(2,1fr); gap:14px}
+@media(min-width:860px){ .gallery{grid-template-columns:repeat(3,1fr)} }
+.gallery figure{margin:0; border-radius:14px; overflow:hidden; border:1px solid var(--line); background:var(--ink2); position:relative}
+.gallery img{display:block; width:100%; height:100%; aspect-ratio:3/4; object-fit:cover; transition:transform .6s cubic-bezier(.22,1,.36,1)}
+.gallery figure:hover img{transform:scale(1.045)}
+.gallery figcaption{
+  position:absolute; left:0; right:0; bottom:0; padding:30px 14px 12px;
+  background:linear-gradient(transparent,rgba(5,5,8,.9));
+  font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#ddd6e4;
+}
+.gallery figure.wide{grid-column:span 2}
+.gallery figure.wide img{aspect-ratio:16/11}
+@media(max-width:560px){ .gallery figure.wide{grid-column:span 1} .gallery figure.wide img{aspect-ratio:4/3} }
+
+footer{padding:52px 0 64px; color:var(--muted); font-size:13px}
+footer .wrap{display:flex; flex-wrap:wrap; gap:18px; justify-content:space-between; align-items:center}
+footer b{font-family:var(--display); color:var(--pink); font-size:17px; font-weight:400}
+footer b i{color:var(--paper); font-style:normal; font-size:.6em; vertical-align:.12em; margin-inline:.38em}
+.note{font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:#575060; max-width:52ch; line-height:1.9}
+.reveal{opacity:0; transform:translateY(22px); transition:opacity .8s ease, transform .8s cubic-bezier(.22,1,.36,1)}
+.reveal.in{opacity:1; transform:none}
+@media(prefers-reduced-motion:reduce){ .reveal{opacity:1;transform:none} html{scroll-behavior:auto} }
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <a class="brand" href="#proto">
+    <img src="img/logo-vm.png" alt="Logo Velozes e Maldosos">
+    <span>VELOZES<i>E</i>MALDOSOS</span>
+  </a>
+  <ul>
+    <li><a href="#proto">O protótipo</a></li>
+    <li><a href="#ideia">A ideia</a></li>
+    <li><a href="#funciona">Como funciona</a></li>
+    <li><a href="#ficha">Ficha técnica</a></li>
+    <li><a href="#fotos">Fotos</a></li>
+  </ul>
+</div></nav>
+
+<header class="viewer" id="proto">
+  <canvas id="scene"></canvas>
+  <div id="marks"></div>
+
+  <div class="hero-title">
+    <h1>VELOZES<em>E</em>MALDOSOS</h1>
+    <p>Jogo de corrida · Arduino · 55 × 29 cm</p>
+  </div>
+
+  <div class="countdown" id="cd"></div>
+  <div class="winner" id="win"><span>Chegou primeiro</span><strong id="winName"></strong></div>
+
+  <div class="race" id="race">
+    <button class="start" id="startBtn">▶ Apostar uma corrida</button>
+    <div class="play">
+      <div class="lane-ui g">
+        <div class="nm"><span>Jogador 1</span><span>tecla A</span></div>
+        <div class="bar"><div class="fill" id="f0"></div></div>
+        <button data-p="0">Acelerar</button>
+      </div>
+      <div class="lane-ui r">
+        <div class="nm"><span>Jogador 2</span><span>tecla L</span></div>
+        <div class="bar"><div class="fill" id="f1"></div></div>
+        <button data-p="1">Acelerar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="vctl">
+    <button id="zin" title="Aproximar" aria-label="Aproximar">+</button>
+    <button id="zout" title="Afastar" aria-label="Afastar">−</button>
+    <button id="reset" title="Vista inicial" aria-label="Vista inicial">⟲</button>
+    <button id="som" title="Som" aria-label="Desligar som">🔊</button>
+  </div>
+
+  <p class="hint" id="hint">Arraste para girar · toque nos pontos rosa</p>
+
+  <div id="loader">
+    <div>
+      <div class="spin"></div>
+      <p id="loadMsg">Montando o protótipo…</p>
+    </div>
+  </div>
+</header>
+
+<div id="scrim"></div>
+<aside id="panel" aria-live="polite">
+  <button class="close" id="panelClose" aria-label="Fechar">✕</button>
+  <p class="eyebrow" id="pEyebrow"></p>
+  <h3 id="pTitle"></h3>
+  <p class="lead" id="pLead"></p>
+  <ul id="pList"></ul>
+</aside>
+
+<main>
+
+<section id="ideia">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="eyebrow">01 — <b>De onde surgiu</b></p>
+      <h2>A gente queria uma corrida <i>de verdade</i> entre duas pessoas.</h2>
+    </div>
+    <div class="cols">
+      <div class="prose reveal">
+        <p>O ponto de partida foi simples: queríamos fazer um <strong>jogo de corrida</strong>. Mas não uma corrida na tela — uma corrida que acontecesse na frente das pessoas, numa mesa, com alguém do seu lado tentando ganhar de você.</p>
+        <p>Aí veio a lembrança daqueles <strong>joguinhos de cavalo de parque de diversões</strong>: você joga água no alvo, ou acerta a bola, e o cavalinho anda um pouquinho. Quanto mais rápido você acerta, mais rápido ele avança. É um jogo que não depende de gráfico nenhum, depende de você e da pessoa ao lado.</p>
+        <div class="pull">“Queríamos trazer essa competitividade, a interação entre as pessoas e a nostalgia de ser um jogo meio que de fliperama.”</div>
+        <p>Foi daí que saiu o <strong>Velozes e Maldosos</strong>: dois botões arcade, dois carrinhos, 45 centímetros de pista e um cenário de mansão mal-assombrada ao luar. A estética veio do contraste entre o preto e o rosa, e o elenco veio da ideia de colocar <strong>vilões no volante</strong> — porque numa corrida assim ninguém está sendo exatamente educado.</p>
+      </div>
+      <div class="sidecard reveal">
+        <h4>O que a gente quis guardar</h4>
+        <ul>
+          <li><span>01</span><div><strong style="color:var(--paper);font-weight:500">Competitividade</strong><br>dois jogadores, lado a lado, no mesmo segundo.</div></li>
+          <li><span>02</span><div><strong style="color:var(--paper);font-weight:500">Interação</strong><br>o jogo só existe se tiver alguém pra disputar com você.</div></li>
+          <li><span>03</span><div><strong style="color:var(--paper);font-weight:500">Nostalgia</strong><br>botão grande, luz, som: cara de fliperama.</div></li>
+          <li><span>04</span><div><strong style="color:var(--paper);font-weight:500">Presença física</strong><br>madeira, tinta, motor. Nada de tela.</div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="funciona">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="eyebrow">02 — <b>Como funciona</b></p>
+      <h2>Quem clicar mais rápido <i>chega primeiro</i>.</h2>
+      <p>A regra inteira cabe numa frase, e é de propósito: ninguém precisa de tutorial pra começar a jogar.</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal" data-n="1">
+        <h3>Cada um no seu botão</h3>
+        <p>Dois botões arcade, um em cada ponta do painel. Um jogador de cada lado.</p>
+      </div>
+      <div class="step reveal" data-n="2">
+        <h3>Martela sem dó</h3>
+        <p>Cada clique chega no Arduino, que manda um pulso para o motor da sua raia.</p>
+      </div>
+      <div class="step reveal" data-n="3">
+        <h3>O carrinho avança</h3>
+        <p>O motor puxa o carrinho pela raia. Quanto mais rápido o clique, mais contínuo o avanço.</p>
+      </div>
+      <div class="step reveal" data-n="4">
+        <h3>O LED decide</h3>
+        <p>Quem cruza a linha primeiro acende o seu LED. A luz é o resultado oficial da disputa.</p>
+      </div>
+      <div class="step reveal" data-n="5">
+        <h3>E se travar?</h3>
+        <p>Levanta a cortina vermelha da traseira: Arduino, motores e fiação ficam todos ali, à mão.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="ficha">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="eyebrow">03 — <b>Ficha técnica</b></p>
+      <h2>O que tem <i>por dentro</i>.</h2>
+    </div>
+    <dl class="specs reveal">
+      <div class="spec"><dt>Comprimento</dt><dd>55 cm<small>a caixa inteira, de ponta a ponta</small></dd></div>
+      <div class="spec"><dt>Altura total</dt><dd>29 cm<small>incluindo o painel do cenário</small></dd></div>
+      <div class="spec"><dt>Pista</dt><dd>45 cm<small>duas raias guiadas, largada e chegada quadriculadas</small></dd></div>
+      <div class="spec"><dt>Cérebro</dt><dd>Arduino<small>lê os botões e comanda os motores</small></dd></div>
+      <div class="spec"><dt>Acesso</dt><dd>Traseira<small>abertura com cortina de feltro vermelho para chegar em todo o sistema</small></dd></div>
+      <div class="spec"><dt>Driver</dt><dd>L9110<small>módulo ponte H que aciona os dois motores</small></dd></div>
+      <div class="spec"><dt>Motores</dt><dd>2 × TT<small>os motorzinhos amarelos clássicos de Arduino</small></dd></div>
+      <div class="spec"><dt>Controles</dt><dd>3 botões<small>dois arcade com microswitch e lâmpada, mais o restart redondo na lateral direita</small></dd></div>
+      <div class="spec"><dt>Sinalização</dt><dd>LED + som<small>um LED por jogador e um buzzer na lateral esquerda</small></dd></div>
+    </dl>
+  </div>
+</section>
+
+<section id="fotos">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="eyebrow">04 — <b>O protótipo real</b></p>
+      <h2>Fora do 3D, <i>em cima da mesa</i>.</h2>
+    </div>
+    <div class="gallery reveal">
+      <figure class="wide"><img src="img/frente.jpg" alt="Vista frontal do protótipo" loading="lazy"><figcaption>Vista frontal — botões, LEDs e o letreiro</figcaption></figure>
+      <figure><img src="img/carrinhos.jpg" alt="Os dois carrinhos na pista vistos de cima" loading="lazy"><figcaption>Os carrinhos na largada</figcaption></figure>
+      <figure><img src="img/conjunto.jpg" alt="Protótipo visto de três quartos" loading="lazy"><figcaption>O conjunto montado</figcaption></figure>
+      <figure><img src="img/jogando.jpg" alt="Duas pessoas jogando" loading="lazy"><figcaption>Em disputa</figcaption></figure>
+      <figure><img src="img/gaveta.jpg" alt="Gaveta lateral com a logo VM" loading="lazy"><figcaption>A gaveta lateral</figcaption></figure>
+      <figure><img src="img/detalhe.jpg" alt="Detalhe do buzzer na quina da caixa" loading="lazy"><figcaption>O buzzer, na lateral esquerda</figcaption></figure>
+      <figure><img src="img/traseira.jpg" alt="Traseira do protótipo com a cortina vermelha" loading="lazy"><figcaption>A cortina vermelha, fechada</figcaption></figure>
+      <figure><img src="img/interna.jpg" alt="Sistema interno: motores, placas e fiação" loading="lazy"><figcaption>Atrás dela: motores, placas e fiação</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer><div class="wrap">
+  <b>VELOZES<i>E</i>MALDOSOS</b>
+  <p class="note">Modelo 3D estilizado, feito a partir das fotos e das medidas do protótipo. Fotos do protótipo real.</p>
+</div></footer>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+let THREE, OrbitControls, RoomEnvironment;
+async function carregar3D(){
+  try{   // 1ª tentativa: jsDelivr, via import map
+    THREE = await import('three');
+    ({OrbitControls} = await import('three/addons/controls/OrbitControls.js'));
+    ({RoomEnvironment} = await import('three/addons/environments/RoomEnvironment.js'));
+    return true;
+  }catch(e){ console.warn('CDN principal indisponível, tentando o reserva', e); }
+  try{   // 2ª tentativa: esm.sh resolve as próprias dependências
+    const B = 'https://esm.sh/three@0.169.0';
+    THREE = await import(B);
+    ({OrbitControls} = await import(B + '/examples/jsm/controls/OrbitControls.js'));
+    ({RoomEnvironment} = await import(B + '/examples/jsm/environments/RoomEnvironment.js'));
+    return true;
+  }catch(e){ console.warn('CDN reserva também falhou', e); }
+  return false;
+}
+if(!await carregar3D()){
+  document.getElementById('loader').innerHTML =
+    '<p class="err">Não consegui carregar a biblioteca 3D agora — isso costuma ser a conexão. Recarregue a página que ela volta. O resto do site funciona normalmente, é só rolar para baixo.</p>';
+  throw new Error('3D indisponível');
+}
+
+/* fontes e logo precisam estar prontas ANTES de desenhar as texturas */
+try{
+  await Promise.all([
+    document.fonts.load('400 100px "Abril Fatface"'),
+    document.fonts.load('900 100px "Playfair Display"')
+  ]);
+  await document.fonts.ready;
+}catch(e){}
+
+let LOGO = null;
+try{
+  LOGO = await new Promise((ok,fail)=>{
+    const i = new Image();
+    i.onload = ()=>ok(i); i.onerror = fail;
+    i.src = 'img/logo-vm.png';
+  });
+}catch(e){ console.warn('logo não carregou, usando versão desenhada'); }
+
+/* ============================================================
+   MEDIDAS REAIS (em cm)  —  55 larg · 29 alt · 25 prof
+   ============================================================ */
+const W = 55, D = 25, H_BASE = 8, H_UPPER = 5, D_UPPER = 17;
+const TRACK_Y = H_BASE + H_UPPER;          // 13
+const DECK_Y  = H_BASE;                    // 8
+const TRACK_Z0 = -D/2, TRACK_Z1 = -D/2 + D_UPPER;   // -12.5 .. 4.5
+const LANE_A = -3.0, LANE_B = 1.0;         // centros das raias
+const RACE_X0 = -22.5, RACE_X1 = 22.5;     // 45 cm de pista
+const BACK_H = 16;                          // painel do cenário acima da pista
+
+/* ============================================================
+   TEXTURAS DESENHADAS NO CANVAS
+   ============================================================ */
+function cv(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return [c,c.getContext('2d')];}
+function toTex(c){const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; return t;}
+
+const FONTE_LETREIRO = '"Abril Fatface", Georgia, serif';
+const CONDENSA = 0.84;   // o letreiro do protótipo é bem condensado
+
+/* letreiro frontal: VELOZES E MALDOSOS */
+function texTitulo(){
+  const [c,x]=cv(2200,320);
+  x.fillStyle='#0a0a0d'; x.fillRect(0,0,2200,320);
+  const g=x.createLinearGradient(0,0,0,320);
+  g.addColorStop(0,'rgba(255,255,255,.055)'); g.addColorStop(.45,'rgba(255,255,255,0)'); g.addColorStop(1,'rgba(255,255,255,.03)');
+  x.fillStyle=g; x.fillRect(0,0,2200,320);
+
+  x.save();
+  x.scale(CONDENSA, 1);                 // daqui pra baixo, em coordenadas "esticadas"
+  const LARG = 2200/CONDENSA;
+  x.textBaseline='middle'; x.textAlign='left';
+
+  const F=FONTE_LETREIRO;
+  let big=215, w1=0, w2=0, w3=0;
+  for(let i=0;i<50;i++){
+    x.font=`400 ${big}px ${F}`;
+    w1=x.measureText('VELOZES').width; w3=x.measureText('MALDOSOS').width;
+    x.font=`400 ${Math.round(big*.52)}px ${F}`; w2=x.measureText(' E ').width;
+    if(w1+w2+w3 <= LARG*0.93) break;
+    big -= 5;
+  }
+  let px=(LARG-(w1+w2+w3))/2;
+  const Y=165;
+  x.shadowColor='rgba(239,27,125,.4)'; x.shadowBlur=24;
+  x.font=`400 ${big}px ${F}`; x.fillStyle='#ef1b7d';
+  x.fillText('VELOZES',px,Y); px+=w1;
+  x.shadowBlur=0;
+  x.font=`400 ${Math.round(big*.52)}px ${F}`; x.fillStyle='#efe7dd';
+  x.fillText(' E ',px,Y+6); px+=w2;
+  x.shadowColor='rgba(239,27,125,.4)'; x.shadowBlur=24;
+  x.font=`400 ${big}px ${F}`; x.fillStyle='#ef1b7d';
+  x.fillText('MALDOSOS',px,Y);
+  x.restore();
+  return toTex(c);
+}
+
+/* logo circular VM — usa o arquivo real quando disponível */
+function drawVM(x, cx, cy, r){
+  if(LOGO){ x.drawImage(LOGO, cx-r, cy-r, r*2, r*2); return; }
+  x.save();
+  x.fillStyle='#0b0b0e'; x.beginPath(); x.arc(cx,cy,r,0,7); x.fill();
+  x.strokeStyle='#ef1b7d'; x.lineWidth=Math.max(2,r*.07);
+  x.beginPath(); x.arc(cx,cy,r*.86,0,7); x.stroke();
+  x.fillStyle='#ef1b7d';
+  const n=44;
+  for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, rr=r*.97;
+    x.beginPath(); x.arc(cx+Math.cos(a)*rr, cy+Math.sin(a)*rr, r*.035, 0, 7); x.fill(); }
+  x.textAlign='center'; x.textBaseline='middle';
+  x.font=`400 ${r*0.95}px ${FONTE_LETREIRO}`;
+  x.fillStyle='#8f6bd8'; x.fillText('VM', cx+r*.04, cy+r*.06);
+  x.fillStyle='#ef1b7d'; x.fillText('VM', cx, cy+r*.04);
+  x.restore();
+}
+
+/* faixa das lápides (frente do bloco superior) */
+function texLapides(){
+  const [c,x]=cv(2200,200);
+  x.fillStyle='#0a0a0d'; x.fillRect(0,0,2200,200);
+  const g=x.createLinearGradient(0,0,0,200);
+  g.addColorStop(0,'rgba(255,255,255,.05)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=g; x.fillRect(0,0,2200,200);
+  const slots=[.155,.325,.5,.675,.845];
+  slots.forEach((s,i)=>{
+    const cx=2200*s;
+    if(i===2){ drawVM(x,cx,100,88); return; }
+    const w=134, bot=182, top=12, rad=w/2;
+    x.save();
+    x.beginPath();
+    x.moveTo(cx-w/2, bot);
+    x.lineTo(cx-w/2, top+rad);
+    x.arc(cx, top+rad, rad, Math.PI, 0);
+    x.lineTo(cx+w/2, bot);
+    x.closePath();
+    x.fillStyle='#ef1b7d'; x.fill();
+    x.strokeStyle='#f6f2ec'; x.lineWidth=8; x.stroke();
+    // arco interno
+    x.beginPath();
+    x.moveTo(cx-w/2+24, bot-10);
+    x.lineTo(cx-w/2+24, top+rad);
+    x.arc(cx, top+rad, rad-24, Math.PI, 0);
+    x.lineTo(cx+w/2-24, bot-10);
+    x.strokeStyle='rgba(255,255,255,.32)'; x.lineWidth=3; x.stroke();
+    // plaquinha branca da base
+    x.fillStyle='#f6f2ec'; x.fillRect(cx-w/2-10, bot-4, w+20, 18);
+    x.restore();
+  });
+  return toTex(c);
+}
+
+/* pista: asfalto, sulcos das raias, largada e chegada */
+function texPista(){
+  const [c,x]=cv(1760,544);
+  x.fillStyle='#0f0f14'; x.fillRect(0,0,1760,544);
+  for(let i=0;i<14000;i++){
+    x.fillStyle=`rgba(${Math.random()<.5?255:0},${Math.random()<.5?255:0},255,${Math.random()*0.022})`;
+    x.fillRect(Math.random()*1760, Math.random()*544, 1.6, 1.6);
+  }
+  // leve brilho de tinta, como no protótipo real
+  const sheen=x.createLinearGradient(0,0,0,544);
+  sheen.addColorStop(0,'rgba(0,0,0,.45)');
+  sheen.addColorStop(.40,'rgba(110,130,205,.07)');
+  sheen.addColorStop(.70,'rgba(255,255,255,.028)');
+  sheen.addColorStop(1,'rgba(0,0,0,.5)');
+  x.fillStyle=sheen; x.fillRect(0,0,1760,544);
+  const zToY = z => (z - TRACK_Z0)/D_UPPER*544;
+  const xToX = v => (v + W/2)/W*1760;
+  // sulcos
+  [-7, LANE_A, LANE_B].forEach(z=>{
+    const y=zToY(z);
+    x.strokeStyle='#000'; x.lineWidth=9;
+    x.beginPath(); x.moveTo(xToX(-26.5), y); x.lineTo(xToX(26.5), y); x.stroke();
+    x.strokeStyle='rgba(150,165,215,.13)'; x.lineWidth=2;
+    x.beginPath(); x.moveTo(xToX(-26.5), y+6); x.lineTo(xToX(26.5), y+6); x.stroke();
+  });
+  // quadriculado largada/chegada
+  [RACE_X0, RACE_X1].forEach(vx=>{
+    const px=xToX(vx), sq=23;
+    for(let row=0; row*sq < 544; row++){
+      for(let col=0; col<2; col++){
+        x.fillStyle = ((row+col)%2===0) ? '#f3efe9' : '#14141a';
+        x.fillRect(px-sq+col*sq, row*sq, sq, sq);
+      }
+    }
+  });
+  return toTex(c);
+}
+
+/* arvorezinha 2D para o cenário pintado */
+function paintTree(x, bx, by, len, ang, wdt, depth, col){
+  const ex = bx + Math.cos(ang)*len, ey = by + Math.sin(ang)*len;
+  x.strokeStyle=col; x.lineWidth=wdt; x.lineCap='round';
+  x.beginPath(); x.moveTo(bx,by); x.lineTo(ex,ey); x.stroke();
+  if(depth<=0) return;
+  const n = 2 + (Math.random()<.45?1:0);
+  for(let i=0;i<n;i++){
+    paintTree(x, ex, ey, len*(.62+Math.random()*.16),
+      ang + (Math.random()-.5)*1.25, Math.max(1,wdt*.6), depth-1, col);
+  }
+}
+
+/* cenário noturno pintado no painel de fundo */
+function texCenario(){
+  const [c,x]=cv(1760,528);
+  const sky=x.createLinearGradient(0,0,0,528);
+  sky.addColorStop(0,'#04050e'); sky.addColorStop(.5,'#0a0f2e'); sky.addColorStop(1,'#141c52');
+  x.fillStyle=sky; x.fillRect(0,0,1760,528);
+  // estrelas
+  for(let i=0;i<190;i++){
+    const sx=Math.random()*1760, sy=Math.random()*330;
+    x.fillStyle=`rgba(255,255,255,${.12+Math.random()*.4})`;
+    x.beginPath(); x.arc(sx,sy,Math.random()*1.5+.4,0,7); x.fill();
+  }
+  // lua crescente
+  (function(){
+    const r=46, [mc,mx]=cv(r*2+8,r*2+8);
+    mx.fillStyle='#f5d547'; mx.beginPath(); mx.arc(r+4,r+4,r,0,7); mx.fill();
+    mx.globalCompositeOperation='destination-out';
+    mx.beginPath(); mx.arc(r+4-r*.52, r+4-r*.34, r*.93, 0,7); mx.fill();
+    x.save(); x.shadowColor='rgba(245,213,71,.55)'; x.shadowBlur=36;
+    x.drawImage(mc, 1470, 42); x.restore();
+  })();
+  // nuvens/montanhas recortadas
+  function blob(cx,cy,w,h,col){
+    x.fillStyle=col; x.beginPath();
+    for(let i=0;i<=22;i++){
+      const t=i/22, ax=cx-w/2+w*t;
+      const ay=cy - Math.sin(t*Math.PI)*h*(.62+.38*Math.sin(t*9.1+cx));
+      i?x.lineTo(ax,ay):x.moveTo(ax,ay);
+    }
+    x.lineTo(cx+w/2,528); x.lineTo(cx-w/2,528); x.closePath(); x.fill();
+  }
+  blob(230,470,760,170,'#1a2670'); blob(1540,476,760,150,'#1a2670');
+  blob(140,500,620,118,'#2a3c9c'); blob(1650,500,620,104,'#2a3c9c');
+  // mansão
+  (function(){
+    const base=492, lightV='#8a8fe2', dark='#6b70c6', darker='#4e529c';
+    function spire(cx,top,w,h){
+      x.fillStyle=darker; x.beginPath();
+      x.moveTo(cx,top-h); x.lineTo(cx+w/2,top); x.lineTo(cx-w/2,top); x.closePath(); x.fill();
+      x.strokeStyle=darker; x.lineWidth=3;
+      x.beginPath(); x.moveTo(cx,top-h); x.lineTo(cx,top-h-20); x.stroke();
+      x.beginPath(); x.moveTo(cx-7,top-h-13); x.lineTo(cx+7,top-h-13); x.stroke();
+    }
+    function gable(x0,x1,top,peak){
+      x.fillStyle=dark; x.beginPath();
+      x.moveTo(x0-16,top); x.lineTo((x0+x1)/2,peak); x.lineTo(x1+16,top); x.closePath(); x.fill();
+    }
+    function arch(cx,bottom,w,h,fill){
+      const r=w/2;
+      x.fillStyle=fill; x.beginPath();
+      x.moveTo(cx-r,bottom); x.lineTo(cx-r,bottom-h+r); x.arc(cx,bottom-h+r,r,Math.PI,0); x.lineTo(cx+r,bottom); x.closePath(); x.fill();
+    }
+    function figure(cx,bottom,h,col){
+      x.fillStyle=col;
+      x.beginPath(); x.arc(cx,bottom-h*.84,h*.16,0,7); x.fill();
+      x.beginPath();
+      x.moveTo(cx-h*.2,bottom); x.quadraticCurveTo(cx-h*.22,bottom-h*.62,cx,bottom-h*.68);
+      x.quadraticCurveTo(cx+h*.22,bottom-h*.62,cx+h*.2,bottom); x.closePath(); x.fill();
+    }
+    // ala esquerda
+    x.fillStyle=lightV; x.fillRect(630,300,270,base-300);
+    gable(630,900,300,196); spire(660,300,30,70); spire(870,300,30,70);
+    // ala direita
+    x.fillStyle=dark; x.fillRect(900,268,230,base-268);
+    gable(900,1130,268,170); spire(930,268,28,64); spire(1100,268,28,64);
+    // janelão iluminado no topo (ala esquerda)
+    x.fillStyle='#f2c73c'; x.fillRect(676,232,180,56);
+    x.fillStyle='#0d0f28';
+    [706,746,786,826].forEach((fx,i)=> figure(fx,288,46+(i%2)*6,'#0d0f28'));
+    // portal principal, encostado no chão da ala esquerda
+    arch(765,base,80,124,'#1b1f44');
+    x.strokeStyle=darker; x.lineWidth=5;
+    x.beginPath(); x.moveTo(765,base-124+40); x.lineTo(765,base); x.stroke();
+    // janelas coloridas
+    arch(672,448,58,94,'#37c96a'); figure(672,448,70,'#0d1230');
+    arch(858,448,58,94,'#b35ad8'); figure(858,448,70,'#0d1230');
+    arch(960,452,58,110,'#f3efe9'); figure(960,452,84,'#131738');
+    arch(1072,452,58,110,'#e03a4a'); figure(1072,452,84,'#131738');
+    // contorno base
+    x.fillStyle='rgba(0,0,0,.25)'; x.fillRect(620,base-9,520,9);
+  })();
+  // árvores secas em silhueta
+  [[70,520,52],[300,516,40],[480,512,30],[1200,514,36],[1420,520,46],[1700,516,42]].forEach(([tx,ty,len])=>{
+    paintTree(x,tx,ty,len,-Math.PI/2,Math.max(3,len*.09),3,'#2b1d18');
+  });
+  const vign=x.createLinearGradient(0,0,0,528);
+  vign.addColorStop(0,'rgba(0,0,0,.28)'); vign.addColorStop(.35,'rgba(0,0,0,0)'); vign.addColorStop(1,'rgba(0,0,0,.45)');
+  x.fillStyle=vign; x.fillRect(0,0,1760,528);
+  return toTex(c);
+}
+
+/* face da gaveta */
+function texGaveta(){
+  const [c,x]=cv(512,440);
+  x.fillStyle='#121216'; x.fillRect(0,0,512,440);
+  for(let y=0;y<440;y+=5){ x.fillStyle='rgba(255,255,255,.022)'; x.fillRect(0,y,512,1.6); }
+  drawVM(x,256,220,170);
+  return toTex(c);
+}
+
+/* preto genérico com leve textura */
+function texPreto(){
+  const [c,x]=cv(256,256);
+  x.fillStyle='#101014'; x.fillRect(0,0,256,256);
+  for(let i=0;i<2600;i++){ x.fillStyle=`rgba(255,255,255,${Math.random()*.022})`; x.fillRect(Math.random()*256,Math.random()*256,1.4,1.4); }
+  return toTex(c);
+}
+
+/* ============================================================
+   CENA
+   ============================================================ */
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 600);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+try{ scene.environmentIntensity = 0.4; }catch(e){}
+
+scene.add(new THREE.HemisphereLight(0x3a4080, 0x05050a, 0.55));
+const key = new THREE.DirectionalLight(0xfff0f6, 2.5);
+key.position.set(34, 56, 44); key.castShadow = true;
+key.shadow.mapSize.set(1024,1024);
+const sc = key.shadow.camera;
+sc.left=-48; sc.right=48; sc.top=48; sc.bottom=-30; sc.near=10; sc.far=160;
+key.shadow.bias = -0.0012; key.shadow.normalBias = 0.5;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0x5f7cff, 0.85); fill.position.set(-46,24,-30); scene.add(fill);
+const rimPink = new THREE.PointLight(0xef1b7d, 900, 0, 2); rimPink.position.set(-34,20,26); scene.add(rimPink);
+const rimBlue = new THREE.PointLight(0x3ec8f0, 600, 0, 2); rimBlue.position.set(36,16,-6);  scene.add(rimBlue);
+
+const shadowPlane = new THREE.Mesh(
+  new THREE.PlaneGeometry(220,220),
+  new THREE.ShadowMaterial({opacity:0.42})
+);
+shadowPlane.rotation.x = -Math.PI/2; shadowPlane.receiveShadow = true; scene.add(shadowPlane);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.07;
+controls.minDistance = 22; controls.maxDistance = 150;
+controls.minPolarAngle = 0.18; controls.maxPolarAngle = Math.PI*0.49;
+controls.enablePan = false; controls.zoomSpeed = 0.7; controls.rotateSpeed = 0.75;
+controls.target.set(0, 11.5, 0);
+
+const HOME = {pos:new THREE.Vector3(41,31,63), tgt:new THREE.Vector3(0,11.5,0)};
+camera.position.copy(HOME.pos);
+
+/* ---------- materiais ---------- */
+const mPreto  = new THREE.MeshStandardMaterial({map:texPreto(), color:0xffffff, roughness:0.42, metalness:0.12});
+const mFosco  = new THREE.MeshStandardMaterial({color:0x0c0c10, roughness:0.88, metalness:0.04});
+const mOuro   = new THREE.MeshStandardMaterial({color:0xc9a23f, roughness:0.3,  metalness:0.95});
+const mMadeira= new THREE.MeshStandardMaterial({color:0x6a4833, roughness:0.92});
+const mCarro  = new THREE.MeshStandardMaterial({color:0x17171c, roughness:0.38, metalness:0.25});
+const mPlast  = new THREE.MeshStandardMaterial({color:0x121217, roughness:0.6});
+function matFace(tex){ return new THREE.MeshStandardMaterial({map:tex, roughness:0.46, metalness:0.1}); }
+
+const model = new THREE.Group(); scene.add(model);
+function add(mesh, cast=true, rec=true){ mesh.castShadow=cast; mesh.receiveShadow=rec; model.add(mesh); return mesh; }
+
+/* ---------- corpo: bloco inferior (deck + letreiro) ---------- */
+{
+  const faces = [mPreto,mPreto,mFosco,mFosco,matFace(texTitulo()),mPreto];
+  const b = new THREE.Mesh(new THREE.BoxGeometry(W,H_BASE,D), faces);
+  b.position.set(0,H_BASE/2,0); add(b);
+}
+/* ---------- corpo: bloco superior (pista + lápides) ---------- */
+{
+  const faces = [mPreto,mPreto,mFosco,mFosco,matFace(texLapides()),mPreto];
+  const u = new THREE.Mesh(new THREE.BoxGeometry(W,H_UPPER,D_UPPER), faces);
+  u.position.set(0, H_BASE+H_UPPER/2, TRACK_Z0 + D_UPPER/2); add(u);
+}
+/* ---------- superfície da pista ---------- */
+{
+  const p = new THREE.Mesh(
+    new THREE.PlaneGeometry(W, D_UPPER),
+    new THREE.MeshStandardMaterial({map:texPista(), roughness:0.34, metalness:0.08})
+  );
+  p.rotation.x = -Math.PI/2;
+  p.position.set(0, TRACK_Y+0.02, TRACK_Z0 + D_UPPER/2);
+  p.receiveShadow = true; model.add(p);
+}
+/* ---------- painel do cenário ---------- */
+{
+  const faces=[mFosco,mFosco,mFosco,mFosco,matFace(texCenario()),mFosco];
+  const bd = new THREE.Mesh(new THREE.BoxGeometry(W, BACK_H, 0.5), faces);
+  bd.position.set(0, TRACK_Y + BACK_H/2, TRACK_Z0 - 0.1); add(bd);
+}
+
+/* ============================================================
+   TRASEIRA: abertura de manutenção + cortina vermelha + sistema
+   ============================================================ */
+const BACK_Z = TRACK_Z0 - 0.1;        // -12.6
+const AB_W = 44, AB_Y0 = 2.0, AB_Y1 = 10.0;   // vão da abertura
+let cortina;
+{
+  // moldura em volta do vão
+  const poste = (W-AB_W)/2;                                  // 5.5
+  [[-(AB_W/2+poste/2)],[ (AB_W/2+poste/2)]].forEach(([px])=>{
+    const m=new THREE.Mesh(new THREE.BoxGeometry(poste,TRACK_Y,0.4), mFosco);
+    m.position.set(px, TRACK_Y/2, BACK_Z); add(m);
+  });
+  const soleira=new THREE.Mesh(new THREE.BoxGeometry(AB_W,AB_Y0,0.4), mFosco);
+  soleira.position.set(0, AB_Y0/2, BACK_Z); add(soleira);
+  const verga=new THREE.Mesh(new THREE.BoxGeometry(AB_W,TRACK_Y-AB_Y1,0.4), mFosco);
+  verga.position.set(0, (AB_Y1+TRACK_Y)/2, BACK_Z); add(verga);
+
+  // casco interno (faces viradas pra dentro), pra não vazar o modelo
+  const mMDF = new THREE.MeshStandardMaterial({color:0x7d5f3d, roughness:0.95, side:THREE.BackSide});
+  const casco = new THREE.Mesh(new THREE.BoxGeometry(W-1.2, 12.2, D_UPPER-1.0), mMDF);
+  casco.position.set(0, 6.3, TRACK_Z0 + (D_UPPER-1.0)/2); casco.receiveShadow = true;
+  model.add(casco);
+
+  // --- o sistema por dentro ---
+  const mLenho = new THREE.MeshStandardMaterial({color:0xb08b56, roughness:0.92});
+  const mPlaca = new THREE.MeshStandardMaterial({color:0x123b48, roughness:0.55, metalness:0.2});
+  const mDriver= new THREE.MeshStandardMaterial({color:0x7d1222, roughness:0.6});
+  const mAmarelo=new THREE.MeshStandardMaterial({color:0xe2b411, roughness:0.5});
+  const mPilha = new THREE.MeshStandardMaterial({color:0xe8e4da, roughness:0.6});
+
+  function peca(geo, mat, x,y,z){ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z);
+    m.castShadow=true; m.receiveShadow=true; model.add(m); return m; }
+
+  peca(new THREE.BoxGeometry(42,0.6,11), mLenho, 0, 2.5, -7);        // tablado
+  peca(new THREE.BoxGeometry(0.9,5.6,0.9), mLenho, 3.5, 5.4, -7.6);  // sarrafo vertical
+  peca(new THREE.BoxGeometry(0.9,5.6,0.9), mLenho, -8, 5.4, -8.2);
+
+  // dois motores TT amarelos
+  [-16.5,-11.8].forEach((mx,i)=>{
+    peca(new THREE.BoxGeometry(3.4,2.3,1.5), mAmarelo, mx, 4.3, -8.4-i*0.4);
+    peca(new THREE.BoxGeometry(1.7,1.9,2.1), mPlast,   mx+2.2, 4.1, -8.4-i*0.4);
+    const eixo=peca(new THREE.CylinderGeometry(0.16,0.16,2.6,10), mPlast, mx+2.2, 4.1, -7.1-i*0.4);
+    eixo.rotation.x=Math.PI/2;
+  });
+  // Arduino + módulo driver + pilhas
+  peca(new THREE.BoxGeometry(5.8,0.35,3.8), mPlaca, 1.5, 3.0, -6.4);
+  const ledPlaca=peca(new THREE.CylinderGeometry(0.17,0.17,0.3,8),
+    new THREE.MeshStandardMaterial({color:0x44ff77, emissive:0x33ee66, emissiveIntensity:2.4}), 3.6, 3.3, -5.4);
+  ledPlaca.rotation.x=Math.PI/2; ledPlaca.rotation.z=Math.PI/2;
+  peca(new THREE.BoxGeometry(2.9,0.32,2.4), mDriver, 8.6, 2.95, -6.0);
+  peca(new THREE.BoxGeometry(5.4,1.6,2.8), mPilha, 15.5, 3.5, -6.6);
+  peca(new THREE.BoxGeometry(5.5,0.5,2.9), new THREE.MeshStandardMaterial({color:0x2b53c0, roughness:0.6}), 15.5, 4.0, -6.6);
+
+  // fiação
+  function cabo(pts, cor, r=0.115){
+    const curva=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(...p)));
+    const m=new THREE.Mesh(new THREE.TubeGeometry(curva,30,r,6,false),
+      new THREE.MeshStandardMaterial({color:cor, roughness:0.65}));
+    m.castShadow=true; model.add(m); return m;
+  }
+  cabo([[-14,4.6,-7.6],[-9,5.6,-6.2],[-4,4.4,-5.6],[0,3.4,-6.0]], 0xd4232e);
+  cabo([[-14,4.2,-7.2],[-8,5.0,-5.4],[-3,3.9,-5.2],[1,3.3,-5.6]], 0xe9e6e0);
+  cabo([[4,3.3,-6.2],[7,4.6,-5.2],[10,3.6,-5.6],[13,3.9,-6.2]],   0x7a4bd0);
+  cabo([[4,3.2,-6.8],[8,4.1,-7.4],[12,3.6,-7.0],[15,4.3,-6.6]],   0x1b1b20);
+  cabo([[9,3.2,-5.6],[12,4.8,-4.8],[16,4.6,-5.2],[19,3.6,-6.4]],  0xe08a1e);
+
+  // --- cortina de feltro vermelho ---
+  const CW=45.6, CH=9.2;
+  const cg=new THREE.PlaneGeometry(CW,CH,44,14);
+  const pa=cg.attributes.position;
+  for(let i=0;i<pa.count;i++){
+    const vx=pa.getX(i), vy=pa.getY(i);
+    const desce=1-(vy+CH/2)/CH;          // 0 preso em cima, 1 na barra solta
+    // pregas verticais: estreitas e firmes no varão, mais abertas embaixo
+    const prega = Math.sin(vx*0.80)*0.30 + Math.sin(vx*0.37+1.4)*0.22 + Math.sin(vx*0.19+0.3)*0.16;
+    pa.setZ(i, prega * (0.25 + desce*0.95));
+    // barra levemente ondulada, só na parte de baixo
+    pa.setY(i, vy + Math.sin(vx*0.33+0.9)*0.26*Math.pow(desce,2.2));
+  }
+  cg.computeVertexNormals();
+  cg.translate(0,-CH/2,0);                // pivô exatamente na borda de cima
+  cortina=new THREE.Mesh(cg, new THREE.MeshStandardMaterial({
+    color:0xb01230, roughness:1.0, metalness:0, side:THREE.DoubleSide}));
+  cortina.position.set(0, AB_Y1+0.5, BACK_Z-1.15);   // folga pra prega não atravessar a moldura
+  cortina.castShadow=true; model.add(cortina);
+  // sanefa fina que prende o feltro no topo
+  const sanefa=peca(new THREE.BoxGeometry(CW+0.6,0.8,1.5), mFosco, 0, AB_Y1+0.8, BACK_Z-0.75);
+  sanefa.castShadow=true;
+}
+let cortinaAlvo = 1;   // 1 = fechada · 0.16 = levantada
+/* ---------- árvores secas ---------- */
+function arvore(s=1){
+  const g = new THREE.Group();
+  (function branch(st, dir, len, rad, depth){
+    const geo = new THREE.CylinderGeometry(rad*0.55, rad, len, 5);
+    const m = new THREE.Mesh(geo, mMadeira);
+    m.position.copy(st).addScaledVector(dir, len/2);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
+    m.castShadow = true; g.add(m);
+    if(depth<=0) return;
+    const end = st.clone().addScaledVector(dir,len);
+    const n = 2 + (Math.random()<.45?1:0);
+    for(let i=0;i<n;i++){
+      const d = dir.clone();
+      d.x += (Math.random()-.5)*1.25; d.z += (Math.random()-.5)*1.25; d.y += (Math.random()-.25)*.35;
+      branch(end, d.normalize(), len*(.6+Math.random()*.18), rad*.58, depth-1);
+    }
+  })(new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0), 2.1*s, 0.26*s, 3);
+  return g;
+}
+[[-24,-9,1],[-14,-6.5,.8],[-5,-10,1.1],[4,-5.5,.75],[13,-9.5,1],[21,-6,.85],[25.5,-11,1.05],[-20,-4,.7]]
+ .forEach(([x,z,s])=>{ const t=arvore(s); t.position.set(x, TRACK_Y, z); t.rotation.y=Math.random()*6; model.add(t); });
+
+/* ---------- botões arcade ---------- */
+function botao(x){
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(6.2,1.5,4.4), mPlast);
+  base.position.y = 0.75; base.castShadow = true; g.add(base);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(4.6,1.0,2.9),
+    new THREE.MeshStandardMaterial({color:0x2a9fd6, emissive:0x1d7fb8, emissiveIntensity:0.9, roughness:0.18, metalness:0.05, transparent:true, opacity:0.95}));
+  top.position.y = 1.65; top.castShadow = true; g.add(top);
+  g.position.set(x, DECK_Y, 8.6);
+  model.add(g); return top;
+}
+const btnMeshes = [botao(-20.5), botao(20.5)];
+const btnPress = [0,0];
+const BTN_Y = 1.65;
+
+/* ---------- LEDs ---------- */
+function led(x, color){
+  const g = new THREE.Group();
+  const m = new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.5, roughness:0.15, transparent:true, opacity:0.92});
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.46,0.85,14), m);
+  body.position.y = 0.42; g.add(body);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.42,14,10,0,7,0,Math.PI/2), m);
+  cap.position.y = 0.85; g.add(cap);
+  const lamp = new THREE.PointLight(color, 0, 18, 2); lamp.position.y = 1.4; g.add(lamp);
+  g.position.set(x, DECK_Y, 8.6); model.add(g);
+  return {mat:m, lamp};
+}
+const leds = [ led(-7.5, 0x3ee874), led(7.5, 0xff3b4d) ];
+
+/* ---------- buzzer: lateral ESQUERDA, alinhado com os botões ---------- */
+{
+  const bz = new THREE.Mesh(new THREE.CylinderGeometry(1.05,1.05,0.95,20), mPlast);
+  bz.rotation.z = Math.PI/2; bz.position.set(-W/2-0.4, 4.2, 7.0); add(bz);
+  const furo = new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.19,0.3,10), mFosco);
+  furo.rotation.z = Math.PI/2; furo.position.set(-W/2-0.95, 4.2, 7.0); model.add(furo);
+}
+
+/* ---------- lateral DIREITA: botão de restart + logo ---------- */
+{
+  // botão redondo preto
+  const aro = new THREE.Mesh(new THREE.CylinderGeometry(1.75,1.75,0.55,26), mPlast);
+  aro.rotation.z = Math.PI/2; aro.position.set(W/2+0.2, 7.4, 2.5); add(aro);
+  const domo = new THREE.Mesh(
+    new THREE.SphereGeometry(1.45,26,16,0,Math.PI*2,0,Math.PI/2),
+    new THREE.MeshStandardMaterial({color:0x17171c, roughness:0.26, metalness:0.12}));
+  domo.rotation.z = -Math.PI/2; domo.position.set(W/2+0.4, 7.4, 2.5); add(domo);
+}
+/* ---------- gaveta lateral VM ---------- */
+{
+  const g = new THREE.Group();
+  const w=7.2,h=6.2,d=7.4,t=0.45;
+  const faceMat = new THREE.MeshStandardMaterial({map:texGaveta(), roughness:0.72});
+  const face = new THREE.Mesh(new THREE.BoxGeometry(t,h,d), faceMat);
+  face.position.x = -w/2; g.add(face);
+  const parts = [
+    [new THREE.BoxGeometry(w,t,d), 0,-h/2,0],
+    [new THREE.BoxGeometry(w,h,t), 0,0,-d/2],
+    [new THREE.BoxGeometry(w,h,t), 0,0, d/2],
+    [new THREE.BoxGeometry(t,h,d), w/2,0,0],
+  ];
+  parts.forEach(([geo,x,y,z])=>{ const m=new THREE.Mesh(geo,mPlast); m.position.set(x,y,z); m.castShadow=true; g.add(m); });
+  g.traverse(o=>{ if(o.isMesh){o.castShadow=true;o.receiveShadow=true;} });
+  g.position.set(-W/2 - 3.4, 8.2, -6);     // mais perto do fundo que dos botões
+  model.add(g);
+
+  // a mesma logo, colada na lateral direita, na mesma posição
+  if(LOGO){
+    const [lc,lx]=cv(512,512); lx.drawImage(LOGO,0,0,512,512);
+    const t=toTex(lc);
+    const decalc=new THREE.Mesh(new THREE.PlaneGeometry(7.0,7.0),
+      new THREE.MeshStandardMaterial({map:t, transparent:true, roughness:0.62, metalness:0.05}));
+    decalc.rotation.y = Math.PI/2;
+    decalc.position.set(W/2+0.06, 8.2, -6);
+    model.add(decalc);
+  }
+}
+
+/* ---------- carrinhos ---------- */
+function carro(dotHex){
+  const g = new THREE.Group();
+  const piso = new THREE.Mesh(new THREE.BoxGeometry(8.6,0.5,3.4), mCarro); piso.position.y=0.9; g.add(piso);
+  const corpo= new THREE.Mesh(new THREE.BoxGeometry(5.0,1.5,2.1), mCarro); corpo.position.set(-0.2,1.75,0); g.add(corpo);
+  const bico = new THREE.Mesh(new THREE.BoxGeometry(3.0,0.7,1.3), mCarro); bico.position.set(3.4,1.35,0); g.add(bico);
+  const asaT = new THREE.Mesh(new THREE.BoxGeometry(1.1,0.25,3.2), mCarro); asaT.position.set(-4.0,2.5,0); g.add(asaT);
+  const supT = new THREE.Mesh(new THREE.BoxGeometry(0.4,1.0,0.5), mCarro); supT.position.set(-4.0,2.0,0); g.add(supT);
+  const asaD = new THREE.Mesh(new THREE.BoxGeometry(1.4,0.22,2.6), mCarro); asaD.position.set(4.4,1.05,0); g.add(asaD);
+  // listra dourada
+  const listra = new THREE.Mesh(new THREE.BoxGeometry(7.0,0.08,0.45), mOuro); listra.position.set(0.3,1.17,0); g.add(listra);
+  const aro1 = new THREE.Mesh(new THREE.TorusGeometry(1.15,0.12,8,22), mOuro); aro1.position.set(-0.2,1.78,1.07); g.add(aro1);
+  // rodas
+  const roda = new THREE.CylinderGeometry(1.15,1.15,1.3,20);
+  [[-3.0,1.95],[-3.0,-1.95],[2.9,1.85],[2.9,-1.85]].forEach(([x,z])=>{
+    const r = new THREE.Mesh(roda, mOuro);
+    r.rotation.x = Math.PI/2; r.position.set(x,1.15,z); r.castShadow = true; g.add(r);
+  });
+  // piloto
+  const cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.78,16,12), new THREE.MeshStandardMaterial({color:0x595168, roughness:0.75}));
+  cabeca.position.set(-0.4,3.0,0); g.add(cabeca);
+  const ombro = new THREE.Mesh(new THREE.CapsuleGeometry(0.55,0.5,4,10), new THREE.MeshStandardMaterial({color:0x1b1b22, roughness:0.8}));
+  ombro.position.set(-0.9,2.6,0); ombro.rotation.z=Math.PI/2; g.add(ombro);
+  // marca colorida
+  const dotMat = new THREE.MeshStandardMaterial({color:dotHex, emissive:dotHex, emissiveIntensity:0.35, roughness:0.4});
+  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.62,20), dotMat);
+  dot.rotation.x = -Math.PI/2; dot.position.set(1.6,1.17,0); g.add(dot);
+  // brilho embaixo
+  const glow = new THREE.PointLight(dotHex, 0, 12, 2); glow.position.set(0,0.6,0); g.add(glow);
+  g.traverse(o=>{ if(o.isMesh) o.castShadow = true; });
+  model.add(g);
+  return {g, glow, dotMat};
+}
+const cars = [ carro(0x3ee874), carro(0xff3b4d) ];
+cars[0].g.position.set(RACE_X0, TRACK_Y, LANE_A);
+cars[1].g.position.set(RACE_X0, TRACK_Y, LANE_B);
+
+/* ---------- centraliza e aterrissa ---------- */
+model.position.y = 0;
+
+/* ============================================================
+   PONTOS INTERATIVOS
+   ============================================================ */
+const PONTOS = [
+  { id:'botoes', tag:'Botões arcade', pos:new THREE.Vector3(20.5,10.2,8.6), n:new THREE.Vector3(0.25,0.5,1),
+    cam:new THREE.Vector3(30,18,36), tgt:new THREE.Vector3(12,9,6),
+    eyebrow:'Controle', title:'Dois botões, uma disputa',
+    lead:'Cada jogador tem um botão arcade de verdade, com microswitch e lâmpada interna. É o único controle do jogo — e é de propósito: qualquer pessoa olha e já sabe o que fazer.',
+    list:[['Tipo','Botão arcade com microswitch'],['Luz','Lâmpada interna acesa'],['Função','Cada clique = um pulso para o motor da raia'],['E o terceiro','Um botão preto de restart, na lateral direita']] },
+
+  { id:'leds', tag:'LEDs de vitória', pos:new THREE.Vector3(0,9.6,8.6), n:new THREE.Vector3(0,0.5,1),
+    cam:new THREE.Vector3(2,17,30), tgt:new THREE.Vector3(0,8.5,6),
+    eyebrow:'Resultado', title:'A luz é quem apita',
+    lead:'Os carrinhos podem parar em qualquer lugar da pista, mas quem decide a partida é o LED. Quando alguém cruza a linha, o LED da sua cor acende — e acabou a discussão.',
+    list:[['LEDs','Um verde e um vermelho, um por jogador'],['Regra','Acendeu o seu, você venceu'],['Som','O buzzer na lateral esquerda marca o momento'],['Decisão de projeto','A luz vale mais que a posição do carrinho']] },
+
+  { id:'carros', tag:'Os carrinhos', pos:new THREE.Vector3(-18,16.5,LANE_A), n:new THREE.Vector3(0,1,0.3),
+    cam:new THREE.Vector3(-14,22,24), tgt:new THREE.Vector3(-14,13.5,-1),
+    eyebrow:'Elenco', title:'Preto, dourado e mal-intencionado',
+    lead:'Dois carrinhos no estilo fórmula, pretos com rodas e detalhes dourados, cada um com um vilão no volante. Um leva a marca verde, o outro a vermelha — as mesmas cores dos LEDs do painel.',
+    list:[['Visual','Preto fosco com dourado, a cara do projeto'],['Identidade','Marca verde e marca vermelha'],['Pilotos','Um vilão em cada carro'],['Movimento','Puxados pelo motor ao longo da raia']] },
+
+  { id:'pista', tag:'A pista', pos:new THREE.Vector3(10,13.8,-4), n:new THREE.Vector3(0,1,0.25),
+    cam:new THREE.Vector3(8,34,30), tgt:new THREE.Vector3(2,12,-3),
+    eyebrow:'Arena', title:'45 centímetros para resolver',
+    lead:'A pista tem 45 cm de corrida dentro de uma caixa de 55 cm. É curta de propósito: a partida inteira dura poucos segundos, então dá vontade de jogar de novo na hora.',
+    list:[['Extensão','45 cm de largada até a chegada'],['Raias','Duas, com sulco guia para cada carrinho'],['Marcação','Faixa quadriculada no início e no fim'],['Acabamento','Asfalto escuro com arvorezinhas secas']] },
+
+  { id:'cenario', tag:'O cenário', pos:new THREE.Vector3(-4,24,-12), n:new THREE.Vector3(0,0.3,1),
+    cam:new THREE.Vector3(0,26,44), tgt:new THREE.Vector3(0,20,-6),
+    eyebrow:'Direção de arte', title:'Uma mansão, uma lua e nenhuma boa intenção',
+    lead:'O painel de fundo põe a corrida dentro de uma história: uma mansão gótica iluminada, silhuetas nas janelas, nuvens recortadas em azul e uma lua amarela no canto. É o que transforma uma caixa preta num cenário.',
+    list:[['Fundo','Céu noturno em degradê com estrelas'],['Construção','Mansão com janelas coloridas e silhuetas'],['Paisagem','Nuvens recortadas e árvores secas'],['Paleta','Preto, rosa e azul profundo']] },
+
+  { id:'gaveta', tag:'Gaveta VM', pos:new THREE.Vector3(-30.5,11,-2), n:new THREE.Vector3(-1,0.3,0.2),
+    cam:new THREE.Vector3(-46,20,30), tgt:new THREE.Vector3(-20,10,0),
+    eyebrow:'Detalhe', title:'A gaveta com a marca',
+    lead:'Na lateral, uma gaveta impressa em 3D com a logo VM na frente. É onde ficam guardadas as pecinhas dos vilões — e é o tipo de detalhe que faz o protótipo parecer um produto, não um trabalho de aula.',
+    list:[['Peça','Caixa impressa em 3D, encaixada na lateral'],['Marca','Logo VM em rosa sobre preto'],['Uso','Guarda as miniaturas dos vilões'],['Efeito','Dá acabamento e identidade ao conjunto']] },
+
+  { id:'restart', tag:'Botão de restart', pos:new THREE.Vector3(29.6,7.4,2.5), n:new THREE.Vector3(1,0.25,0.25),
+    cam:new THREE.Vector3(56,18,27), tgt:new THREE.Vector3(20,7.5,3),
+    eyebrow:'Reinício', title:'O preto da lateral direita',
+    lead:'Na lateral direita fica um botão redondo preto: é o restart. Ele apaga o LED do vencedor, devolve os carrinhos à largada e deixa a próxima dupla já pronta para jogar — sem precisar desligar nada.',
+    list:[['Onde','Lateral direita, à frente da logo'],['Formato','Botão redondo preto, diferente dos arcade'],['O que faz','Zera a partida e devolve os carrinhos'],['Por quê','Numa feira, a fila não pode parar']] },
+
+  { id:'sistema', tag:'Cortina da traseira', pos:new THREE.Vector3(0,7.5,-14.2), n:new THREE.Vector3(0,0.25,-1),
+    cam:new THREE.Vector3(6,20,-52), tgt:new THREE.Vector3(0,6.5,-9), cortina:true,
+    eyebrow:'Manutenção', title:'Atrás da cortina vermelha',
+    lead:'A traseira tem uma abertura do tamanho da caixa, escondida por uma cortina de feltro vermelho. Levanta a cortina e dá pra chegar em tudo: o Arduino, o módulo dos motores, os motores TT e a fiação inteira — sem desmontar nada.',
+    list:[['Abertura','Vão na traseira, da largura da caixa'],['Fechamento','Cortina de feltro vermelho em um varão'],['Acesso','Arduino, driver, motores, pilhas e fiação'],['Por quê','Dá pra consertar e remontar no meio da feira']] },
+];
+
+const marks = document.getElementById('marks');
+const panel = document.getElementById('panel');
+const scrim = document.getElementById('scrim');
+PONTOS.forEach(p=>{
+  const b = document.createElement('button');
+  b.className='hs'; b.innerHTML=`<span class="dot"></span><span class="tag">${p.tag}</span>`;
+  b.addEventListener('click', ()=>abrir(p, b));
+  marks.appendChild(b); p.el=b;
+});
+function abrir(p, el){
+  document.querySelectorAll('.hs').forEach(e=>e.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('pEyebrow').textContent = p.eyebrow;
+  document.getElementById('pTitle').textContent = p.title;
+  document.getElementById('pLead').textContent = p.lead;
+  document.getElementById('pList').innerHTML = p.list.map(([k,v])=>`<li><b>${k}</b><span>${v}</span></li>`).join('');
+  panel.classList.add('open'); scrim.classList.add('on');
+  voarPara(p.cam, p.tgt);
+  cortinaAlvo = p.cortina ? 0.16 : 1;      // levanta a cortina só no ponto da traseira
+  document.getElementById('hint').classList.add('gone');
+}
+function fechar(){
+  panel.classList.remove('open'); scrim.classList.remove('on');
+  document.querySelectorAll('.hs').forEach(e=>e.classList.remove('active'));
+  cortinaAlvo = 1;
+}
+document.getElementById('panelClose').onclick = fechar;
+scrim.onclick = fechar;
+addEventListener('keydown', e=>{ if(e.key==='Escape') fechar(); });
+
+/* ---------- câmera animada ---------- */
+let fly = null;
+function voarPara(pos, tgt, dur=950){
+  fly = {t:0, dur, p0:camera.position.clone(), p1:pos.clone(), t0:controls.target.clone(), t1:tgt.clone()};
+}
+const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+
+document.getElementById('reset').onclick = ()=>{ voarPara(HOME.pos, HOME.tgt); fechar(); };
+document.getElementById('zin').onclick  = ()=>zoom(0.82);
+document.getElementById('zout').onclick = ()=>zoom(1.22);
+function zoom(f){
+  const dir = camera.position.clone().sub(controls.target);
+  const len = THREE.MathUtils.clamp(dir.length()*f, controls.minDistance, controls.maxDistance);
+  voarPara(controls.target.clone().add(dir.setLength(len)), controls.target.clone(), 380);
+}
+
+/* ============================================================
+   SOM — tudo sintetizado, sem arquivo externo
+   ============================================================ */
+let AC = null, somLigado = true;
+function audio(){
+  if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } }
+  if(AC.state === 'suspended') AC.resume();
+  return AC;
+}
+// onda quadrada com sustain reto, igual ao tone() do buzzer do Arduino
+function nota(freq, atraso, dur, tipo='square', vol=0.16, plano=false){
+  const ac = audio(); if(!ac || !somLigado) return;
+  const t = ac.currentTime + atraso;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = tipo; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  if(plano) g.gain.setValueAtTime(vol, Math.max(t + 0.009, t + dur - 0.018));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(ac.destination);
+  o.start(t); o.stop(t + dur + 0.03);
+}
+
+/* --- contagem: os mesmos TOM_PI e TOM_JA do código do Arduino --- */
+const TOM_PI = 1000, TOM_JA = 2000;
+const somContagem = n => n>0 ? nota(TOM_PI, 0, 0.150, 'square', 0.15, true)
+                             : nota(TOM_JA, 0, 0.800, 'square', 0.15, true);
+
+function somAcelera(prog){ nota(170 + prog*280, 0, 0.045, 'square', 0.05); }
+
+/* --- música de vitória: as mesmas notas e durações do código do Arduino --- */
+const PAUSA = 0;
+const DO6=1047, MI6=1319, SOL6=1568, LA6=1760, SI6=1976, DO7=2093, RE7=2349;
+const MUSICA = [
+  // 1. tã-tã-tã-TAAAN!
+  [DO6,120],[MI6,120],[SOL6,120],[DO7,350],[PAUSA,100],
+  // 2. ha-ha-ha-ha-HA! (risada subindo, tirando onda)
+  [SOL6,80],[PAUSA,40],[LA6,80],[PAUSA,40],[SI6,80],[PAUSA,40],
+  [DO7,80],[PAUSA,40],[RE7,80],[PAUSA,120],
+  // 3. ta... ta... TAAAAAAN!
+  [SOL6,130],[PAUSA,50],[SOL6,130],[PAUSA,50],[DO7,1000]
+];
+function somVitoria(){
+  let t = 0;
+  for(const [f, ms] of MUSICA){
+    if(f === PAUSA){ t += ms/1000; continue; }   // silêncio
+    nota(f, t, ms/1000, 'square', 0.15, true);
+    t += (ms*1.1)/1000;                          // nota + pausinha de 10%, como no Arduino
+  }
+}
+const btnSom = document.getElementById('som');
+btnSom.onclick = ()=>{
+  somLigado = !somLigado;
+  btnSom.textContent = somLigado ? '🔊' : '🔇';
+  btnSom.setAttribute('aria-label', somLigado ? 'Desligar som' : 'Ligar som');
+  if(somLigado) nota(880, 0, 0.1, 'square', 0.12);
+};
+
+/* ============================================================
+   MINI-CORRIDA
+   ============================================================ */
+const META = 26;                       // cliques para completar a pista
+const race = {live:false, done:false, taps:[0,0]};
+const raceEl = document.getElementById('race');
+const cdEl = document.getElementById('cd');
+const winEl = document.getElementById('win');
+const fills = [document.getElementById('f0'), document.getElementById('f1')];
+
+function resetCorrida(){
+  race.live=false; race.done=false; race.taps=[0,0];
+  raceEl.classList.remove('live'); winEl.classList.remove('on');
+  fills.forEach(f=>f.style.width='0%');
+  leds.forEach(l=>{ l.mat.emissiveIntensity=0.5; l.lamp.intensity=0; });
+  cars.forEach((c,i)=>{ c.g.position.x = RACE_X0; c.glow.intensity=0; });
+}
+document.getElementById('startBtn').onclick = ()=>{
+  audio();                               // destrava o som no clique do usuário
+  resetCorrida();
+  voarPara(new THREE.Vector3(0,40,46), new THREE.Vector3(0,13,-3), 850);
+  document.getElementById('hint').classList.add('gone');
+  let n = 3;
+  cdEl.classList.add('on'); cdEl.textContent = n; somContagem(n);
+  const tick = setInterval(()=>{
+    n--;
+    if(n>0){
+      cdEl.textContent = n; somContagem(n);
+      leds.forEach(l=>{l.lamp.intensity=40; setTimeout(()=>l.lamp.intensity=0,260);});
+    }
+    else if(n===0){ cdEl.textContent='JÁ!'; somContagem(0); }
+    else {
+      clearInterval(tick); cdEl.classList.remove('on');
+      race.live = true; raceEl.classList.add('live');
+    }
+  }, 750);
+};
+function acelerar(i){
+  if(!race.live || race.done) return;
+  race.taps[i] = Math.min(META, race.taps[i]+1);
+  fills[i].style.width = (race.taps[i]/META*100)+'%';
+  btnPress[i] = 1;                       // afunda o botão arcade no 3D
+  somAcelera(race.taps[i]/META);
+  if(race.taps[i] >= META) vencer(i);
+}
+function vencer(i){
+  race.done = true; race.live = false;
+  const l = leds[i];
+  l.mat.emissiveIntensity = 3.2; l.lamp.intensity = 90;
+  cars[i].glow.intensity = 45;
+  document.getElementById('winName').textContent = i===0 ? 'JOGADOR 1' : 'JOGADOR 2';
+  document.getElementById('winName').style.color = i===0 ? 'var(--green)' : 'var(--red)';
+  winEl.classList.add('on');
+  somVitoria();
+  setTimeout(()=>{ winEl.classList.remove('on'); raceEl.classList.remove('live'); }, 3200);
+}
+document.querySelectorAll('.lane-ui button').forEach(b=>{
+  const i = +b.dataset.p;
+  b.addEventListener('pointerdown', e=>{ e.preventDefault(); acelerar(i); });
+});
+addEventListener('keydown', e=>{
+  if(e.repeat) return;
+  const k = e.key.toLowerCase();
+  if(k==='a') acelerar(0);
+  if(k==='l') acelerar(1);
+});
+
+/* ============================================================
+   LOOP
+   ============================================================ */
+const v = new THREE.Vector3(), aoPonto = new THREE.Vector3();
+function updateMarks(){
+  const r = canvas.getBoundingClientRect();
+  PONTOS.forEach(p=>{
+    // o marcador só aparece se a câmera estiver do lado de fora daquela face
+    aoPonto.copy(camera.position).sub(p.pos);
+    const deFrente = !p.n || aoPonto.x*p.n.x + aoPonto.y*p.n.y + aoPonto.z*p.n.z > 0;
+    v.copy(p.pos).project(camera);
+    const vis = deFrente && v.z < 1 && v.x>-1.1 && v.x<1.1 && v.y>-1.1 && v.y<1.1;
+    p.el.classList.toggle('off', !vis);
+    if(vis) p.el.style.transform =
+      `translate(-50%,-50%) translate(${(v.x*.5+.5)*r.width}px, ${(-v.y*.5+.5)*r.height}px)`;
+  });
+}
+function resize(){
+  const r = canvas.getBoundingClientRect();
+  if(!r.width || !r.height) return;
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width/r.height; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+let last = performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min((now-last)/1000, 0.05); last = now;
+
+  if(fly){
+    fly.t = Math.min(1, fly.t + dt*1000/fly.dur);
+    const e = ease(fly.t);
+    camera.position.lerpVectors(fly.p0, fly.p1, e);
+    controls.target.lerpVectors(fly.t0, fly.t1, e);
+    if(fly.t>=1) fly = null;
+  }
+
+  // carrinhos perseguem a meta de forma suave
+  cars.forEach((c,i)=>{
+    const alvo = RACE_X0 + (RACE_X1-RACE_X0) * (race.taps[i]/META);
+    c.g.position.x += (alvo - c.g.position.x) * Math.min(1, dt*6.5);
+  });
+
+  // cortina enrola para o varão: Y e Z juntos, senão as pregas viram espetos
+  const sc = cortina.scale.y + (cortinaAlvo - cortina.scale.y) * Math.min(1, dt*3.6);
+  cortina.scale.set(1, sc, Math.max(0.12, sc));
+
+  // botões afundam quando clicados
+  btnMeshes.forEach((m,i)=>{
+    btnPress[i] = Math.max(0, btnPress[i] - dt*9);
+    m.position.y = BTN_Y - btnPress[i]*0.42;
+    m.material.emissiveIntensity = 0.9 + btnPress[i]*1.8;
+  });
+
+  controls.update();
+  updateMarks();
+  renderer.render(scene, camera);
+}
+
+/* ---------- boot ---------- */
+resize();
+requestAnimationFrame(loop);
+setTimeout(()=>document.getElementById('loader').classList.add('gone'), 450);
+setTimeout(()=>document.getElementById('hint').classList.add('gone'), 9000);
+
+/* reveals */
+const io = new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} }), {threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
