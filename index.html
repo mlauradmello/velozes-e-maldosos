@@ -1694,6 +1694,12 @@ function abrirCortina(){
 requestAnimationFrame(()=>requestAnimationFrame(()=>{
   setTimeout(abrirCortina, devagar ? 100 : 620);
 }));
+// rede de segurança: em aba de segundo plano o navegador congela o requestAnimationFrame
+// e a cortina ficaria fechada para sempre. O relógio continua correndo, então garantimos.
+setTimeout(abrirCortina, 2600);
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible') abrirCortina();
+});
 // tocar na cortina adianta a abertura
 palcoEl.addEventListener('pointerdown', abrirCortina);
 
