@@ -95,8 +95,12 @@ nav a:hover{color:var(--paper)}
 }
 
 /* ---------- entrada: a cortina vermelha do protótipo abrindo ---------- */
-#loader{position:absolute; inset:0; z-index:9; overflow:hidden; background:var(--ink)}
-#loader.gone{pointer-events:none}
+#loader{
+  position:absolute; inset:0; z-index:9; overflow:hidden;
+  background:var(--ink); transition:background-color .1s linear;
+}
+/* some com o fundo junto com os panos, senão ele fica cobrindo a cena */
+#loader.gone{pointer-events:none; background-color:transparent}
 #loader.erro .pano{display:none}
 
 .pano{
