@@ -56,3 +56,13 @@ Precisa de internet na primeira carga: a biblioteca 3D e as fontes vêm de CDN.
 index.html    a página inteira (HTML, CSS, JS e o modelo 3D)
 img/          a logo e as fotos do protótipo
 ```
+
+## Equipe
+
+Projeto acadêmico do curso de Design da CESAR School, no Recife.
+
+- Anna Olímpia
+- Letícia Sabino
+- Lucas Regis
+- Maria Laura de Méllo
+- Pâmella Capistrano
