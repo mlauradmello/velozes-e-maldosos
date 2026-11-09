@@ -551,7 +551,7 @@ footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20p
       <figure><img src="img/chegada.jpg" alt="Os carrinhos cruzando a faixa quadriculada" loading="lazy"><figcaption>A chegada, e o restart na lateral</figcaption></figure>
       <figure><img src="img/painel.jpg" alt="Botão azul, LED vermelho e as lápides dos vilões" loading="lazy"><figcaption>Botão, LED e as lápides</figcaption></figure>
       <figure><img src="img/lapides.jpg" alt="As cabeças dos vilões alinhadas no painel" loading="lazy"><figcaption>Os vilões, em miniatura</figcaption></figure>
-      <figure><img src="img/gaveta.jpg" alt="Gaveta lateral aberta com a logo VM" loading="lazy"><figcaption>A gaveta aberta e a largada</figcaption></figure>
+      <figure><img src="img/caixinha.jpg" alt="Caixinha lateral com a logo VM, onde ficam as cabeças dos personagens" loading="lazy"><figcaption>A caixinha das cabeças, e a largada</figcaption></figure>
       <figure><img src="img/lateral.jpg" alt="Lateral do protótipo com a cortina vermelha ao fundo" loading="lazy"><figcaption>A lateral, com a cortina ao fundo</figcaption></figure>
     </div>
   </div>
@@ -885,8 +885,8 @@ function texCenario(){
   return toTex(c);
 }
 
-/* face da gaveta */
-function texGaveta(){
+/* face da caixinha dos vilões */
+function texCaixinha(){
   const [c,x]=cv(512,440);
   x.fillStyle='#121216'; x.fillRect(0,0,512,440);
   for(let y=0;y<440;y+=5){ x.fillStyle='rgba(255,255,255,.022)'; x.fillRect(0,y,512,1.6); }
@@ -976,7 +976,7 @@ const ASPECTO_REF = 1.6;                  // proporção para a qual as vistas f
 function distanciaMinima(aspecto){
   const vfov = camera.fov*Math.PI/180;
   const hfov = 2*Math.atan(Math.tan(vfov/2)*aspecto);
-  const dh = 30.0 / Math.tan(hfov/2);     // meia-largura do protótipo (com a gaveta)
+  const dh = 30.0 / Math.tan(hfov/2);     // meia-largura do protótipo (com a caixinha)
   const dv = 17.5 / Math.tan(vfov/2);     // do alvo até o topo do cenário
   return (Math.max(dh,dv) + D/2) * 1.04;
 }
@@ -1198,11 +1198,11 @@ const leds = [ led(-7.5, 0x3ee874), led(7.5, 0xff3b4d) ];
     new THREE.MeshStandardMaterial({color:0x17171c, roughness:0.26, metalness:0.12}));
   domo.rotation.z = -Math.PI/2; domo.position.set(W/2+0.4, 7.4, 2.5); add(domo);
 }
-/* ---------- gaveta lateral VM ---------- */
+/* ---------- caixinha lateral: guarda as cabeças dos vilões ---------- */
 {
   const g = new THREE.Group();
   const w=7.2,h=6.2,d=7.4,t=0.45;
-  const faceMat = new THREE.MeshStandardMaterial({map:texGaveta(), roughness:0.72});
+  const faceMat = new THREE.MeshStandardMaterial({map:texCaixinha(), roughness:0.72});
   const face = new THREE.Mesh(new THREE.BoxGeometry(t,h,d), faceMat);
   face.position.x = -w/2; g.add(face);
   const parts = [
@@ -1302,11 +1302,11 @@ const PONTOS = [
     lead:'O painel de fundo põe a corrida dentro de uma história: uma mansão gótica iluminada, silhuetas nas janelas, nuvens recortadas em azul e uma lua amarela no canto. É o que transforma uma caixa preta num cenário.',
     list:[['Fundo','Céu noturno em degradê com estrelas'],['Construção','Mansão com janelas coloridas e silhuetas'],['Paisagem','Nuvens recortadas e árvores secas'],['Paleta','Preto, rosa e azul profundo']] },
 
-  { id:'gaveta', tag:'Gaveta VM', pos:new THREE.Vector3(-30.5,11,-2), n:new THREE.Vector3(-1,0.3,0.2),
+  { id:'caixinha', tag:'Caixinha dos vilões', pos:new THREE.Vector3(-30.5,11,-2), n:new THREE.Vector3(-1,0.3,0.2),
     cam:new THREE.Vector3(-46,20,30), tgt:new THREE.Vector3(-20,10,0),
-    eyebrow:'Detalhe', title:'A gaveta com a marca',
-    lead:'Na lateral, uma gaveta impressa em 3D com a logo VM na frente. É onde ficam guardadas as pecinhas dos vilões — e é o tipo de detalhe que faz o protótipo parecer um produto, não um trabalho de aula.',
-    list:[['Peça','Caixa impressa em 3D, encaixada na lateral'],['Marca','Logo VM em rosa sobre preto'],['Uso','Guarda as miniaturas dos vilões'],['Efeito','Dá acabamento e identidade ao conjunto']] },
+    eyebrow:'Detalhe', title:'A caixinha das cabeças',
+    lead:'Encaixada na lateral, uma caixinha impressa em 3D com a logo VM na frente. Ela existe para uma coisa só: guardar as cabeças dos personagens. É o tipo de detalhe que faz o protótipo parecer um produto, não um trabalho de aula.',
+    list:[['Peça','Caixinha impressa em 3D, encaixada na lateral'],['Para quê','Guardar as cabeças dos personagens'],['Marca','Logo VM em rosa sobre preto'],['Efeito','Dá acabamento e identidade ao conjunto']] },
 
   { id:'restart', tag:'Botão de restart', pos:new THREE.Vector3(29.6,7.4,2.5), n:new THREE.Vector3(1,0.25,0.25),
     cam:new THREE.Vector3(56,18,27), tgt:new THREE.Vector3(20,7.5,3),
