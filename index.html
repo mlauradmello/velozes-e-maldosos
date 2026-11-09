@@ -1318,10 +1318,15 @@ function carro(dotHex){
   cabeca.position.set(-0.4,3.0,0); g.add(cabeca);
   const ombro = new THREE.Mesh(new THREE.CapsuleGeometry(0.55,0.5,4,10), new THREE.MeshStandardMaterial({color:0x1b1b22, roughness:0.8}));
   ombro.position.set(-0.9,2.6,0); ombro.rotation.z=Math.PI/2; g.add(ombro);
-  // marca colorida
-  const dotMat = new THREE.MeshStandardMaterial({color:dotHex, emissive:dotHex, emissiveIntensity:0.35, roughness:0.4});
-  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.62,20), dotMat);
-  dot.rotation.x = -Math.PI/2; dot.position.set(1.6,1.17,0); g.add(dot);
+  // bolinha de identificação no bico: verde é o jogador 1, vermelho é o jogador 2
+  const dotMat = new THREE.MeshStandardMaterial({
+    color:dotHex, emissive:dotHex, emissiveIntensity:1.5, roughness:0.22, metalness:0
+  });
+  const bolinha = new THREE.Mesh(new THREE.SphereGeometry(0.66,20,16), dotMat);
+  bolinha.position.set(3.9, 1.98, 0); g.add(bolinha);
+  // colarinho escuro embaixo, para a cor não se confundir com o dourado
+  const colar = new THREE.Mesh(new THREE.CylinderGeometry(0.72,0.78,0.3,18), mPlast);
+  colar.position.set(3.9, 1.52, 0); g.add(colar);
   // brilho embaixo
   const glow = new THREE.PointLight(dotHex, 0, 12, 2); glow.position.set(0,0.6,0); g.add(glow);
   g.traverse(o=>{ if(o.isMesh) o.castShadow = true; });
@@ -1509,7 +1514,7 @@ function resetCorrida(){
   document.querySelector('.viewer').classList.remove('correndo');
   fills.forEach(f=>f.style.width='0%');
   leds.forEach(l=>{ l.mat.emissiveIntensity=0.5; l.lamp.intensity=0; });
-  cars.forEach((c,i)=>{ c.g.position.x = RACE_X0; c.glow.intensity=0; });
+  cars.forEach((c)=>{ c.g.position.x = RACE_X0; c.glow.intensity=0; c.dotMat.emissiveIntensity=1.5; });
 }
 document.getElementById('startBtn').onclick = ()=>{
   audio();                               // destrava o som no clique do usuário
@@ -1545,6 +1550,7 @@ function vencer(i){
   const l = leds[i];
   l.mat.emissiveIntensity = 3.2; l.lamp.intensity = 90;
   cars[i].glow.intensity = 45;
+  cars[i].dotMat.emissiveIntensity = 5;      // a bolinha do vencedor acende
   document.getElementById('winName').textContent = i===0 ? 'JOGADOR 1' : 'JOGADOR 2';
   document.getElementById('winName').style.color = i===0 ? 'var(--green)' : 'var(--red)';
   winEl.classList.add('on');
