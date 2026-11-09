@@ -196,7 +196,14 @@ nav a:hover{color:var(--paper)}
   margin-top:10px; width:100%; border:0; border-radius:10px; padding:11px; cursor:pointer;
   font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
   color:#05060a; font-weight:700; transition:transform .06s;
+  /* martelar o botão no celular não pode rolar a página, dar zoom nem selecionar texto */
+  touch-action:none; -webkit-tap-highlight-color:transparent;
+  user-select:none; -webkit-user-select:none;
 }
+/* a dica muda conforme o aparelho: teclado no computador, toque no celular */
+.dica .t{display:none}
+body.toque .dica .k{display:none}
+body.toque .dica .t{display:inline}
 .lane-ui.g button{background:var(--green)}
 .lane-ui.r button{background:var(--red); color:#fff}
 .lane-ui button:active{transform:scale(.96)}
@@ -213,7 +220,19 @@ nav a:hover{color:var(--paper)}
 .winner.on{opacity:1; transform:translate(-50%,-50%) scale(1)}
 .winner span{font-family:var(--mono); font-size:11px; letter-spacing:.3em; text-transform:uppercase; color:var(--muted)}
 .winner strong{display:block; font-family:var(--head); font-weight:900; font-size:clamp(34px,6vw,58px); margin-top:6px}
-@media(max-width:600px){ .race{bottom:46px} .lane-ui .nm{font-size:8.5px} }
+/* celular: alvos grandes para o polegar e os controles de zoom fora do caminho */
+@media(max-width:600px){
+  .race{bottom:16px; width:95vw}
+  .play{gap:9px}
+  .lane-ui{padding:10px 11px 11px; border-radius:16px}
+  .lane-ui .nm{font-size:8.5px; margin-bottom:7px}
+  .lane-ui .bar{height:8px}
+  .lane-ui button{margin-top:9px; padding:23px 6px; font-size:13px; letter-spacing:.1em; border-radius:12px}
+  .vctl{right:10px; bottom:auto; top:50%; transform:translateY(-50%)}
+  .vctl button{width:34px; height:34px; border-radius:10px; font-size:14px}
+  .viewer.correndo .vctl{opacity:0; pointer-events:none}
+}
+.vctl{transition:opacity .3s}
 
 /* ---------- sections ---------- */
 section{padding:clamp(66px,9vw,120px) 0; border-bottom:1px solid var(--line); scroll-margin-top:72px}
@@ -318,12 +337,12 @@ footer b i{color:var(--paper); font-style:normal; font-size:.6em; vertical-align
     <button class="start" id="startBtn">▶ Apostar uma corrida</button>
     <div class="play">
       <div class="lane-ui g">
-        <div class="nm"><span>Jogador 1</span><span>tecla A</span></div>
+        <div class="nm"><span>Jogador 1</span><span class="dica"><b class="k">tecla A</b><b class="t">toque aqui</b></span></div>
         <div class="bar"><div class="fill" id="f0"></div></div>
         <button data-p="0">Acelerar</button>
       </div>
       <div class="lane-ui r">
-        <div class="nm"><span>Jogador 2</span><span>tecla L</span></div>
+        <div class="nm"><span>Jogador 2</span><span class="dica"><b class="k">tecla L</b><b class="t">toque aqui</b></span></div>
         <div class="bar"><div class="fill" id="f1"></div></div>
         <button data-p="1">Acelerar</button>
       </div>
@@ -1287,6 +1306,7 @@ const fills = [document.getElementById('f0'), document.getElementById('f1')];
 function resetCorrida(){
   race.live=false; race.done=false; race.taps=[0,0];
   raceEl.classList.remove('live'); winEl.classList.remove('on');
+  document.querySelector('.viewer').classList.remove('correndo');
   fills.forEach(f=>f.style.width='0%');
   leds.forEach(l=>{ l.mat.emissiveIntensity=0.5; l.lamp.intensity=0; });
   cars.forEach((c,i)=>{ c.g.position.x = RACE_X0; c.glow.intensity=0; });
@@ -1308,6 +1328,7 @@ document.getElementById('startBtn').onclick = ()=>{
     else {
       clearInterval(tick); cdEl.classList.remove('on');
       race.live = true; raceEl.classList.add('live');
+      document.querySelector('.viewer').classList.add('correndo');
     }
   }, 750);
 };
@@ -1328,12 +1349,27 @@ function vencer(i){
   document.getElementById('winName').style.color = i===0 ? 'var(--green)' : 'var(--red)';
   winEl.classList.add('on');
   somVitoria();
-  setTimeout(()=>{ winEl.classList.remove('on'); raceEl.classList.remove('live'); }, 3200);
+  setTimeout(()=>{
+    winEl.classList.remove('on'); raceEl.classList.remove('live');
+    document.querySelector('.viewer').classList.remove('correndo');
+  }, 3200);
 }
+/* aparelho de toque? então a dica fala em toque, não em tecla */
+const ehToque = matchMedia('(hover:none) and (pointer:coarse)').matches
+             || navigator.maxTouchPoints > 0;
+if(ehToque){
+  document.body.classList.add('toque');
+  document.getElementById('hint').textContent = 'Deslize para girar · toque nos pontos rosa';
+}
+
 document.querySelectorAll('.lane-ui button').forEach(b=>{
   const i = +b.dataset.p;
+  // pointerdown cobre dedo e mouse; cada botão é independente,
+  // então os dois jogadores podem martelar ao mesmo tempo na mesma tela
   b.addEventListener('pointerdown', e=>{ e.preventDefault(); acelerar(i); });
+  b.addEventListener('contextmenu', e=>e.preventDefault());   // segurar não abre menu
 });
+
 addEventListener('keydown', e=>{
   if(e.repeat) return;
   const k = e.key.toLowerCase();
