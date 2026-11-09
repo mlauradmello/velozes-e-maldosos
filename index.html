@@ -94,16 +94,64 @@ nav a:hover{color:var(--paper)}
   letter-spacing:.3em; text-transform:uppercase; color:var(--muted);
 }
 
-/* loader */
-#loader{
-  position:absolute; inset:0; z-index:8; display:grid; place-items:center;
-  background:var(--ink); transition:opacity .6s ease; text-align:center; padding:20px;
+/* ---------- entrada: a cortina vermelha do protótipo abrindo ---------- */
+#loader{position:absolute; inset:0; z-index:9; overflow:hidden; background:var(--ink)}
+#loader.gone{pointer-events:none}
+#loader.erro .pano{display:none}
+
+.pano{
+  position:absolute; top:-2%; bottom:-2%; width:52%;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(0,0,0,.40) 0 3px, rgba(255,255,255,.055) 13px,
+      rgba(0,0,0,.34) 30px, rgba(255,255,255,.075) 46px, rgba(0,0,0,.40) 62px),
+    linear-gradient(180deg,#8e0d24 0%, #b31231 42%, #7c0b1f 100%);
+  transition:transform 1.3s cubic-bezier(.74,0,.22,1);
+  will-change:transform;
 }
-#loader.gone{opacity:0; pointer-events:none}
-.spin{width:38px;height:38px;border:2px solid #2a2434;border-top-color:var(--pink);border-radius:50%;animation:sp 1s linear infinite;margin:0 auto 16px}
-@keyframes sp{to{transform:rotate(360deg)}}
-#loader p{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin:0}
-#loader .err{color:var(--pink2); max-width:420px; font-family:var(--body); letter-spacing:0; text-transform:none; font-size:14px; line-height:1.6}
+.pano.esq{left:0;  box-shadow:inset -34px 0 56px rgba(0,0,0,.55)}
+.pano.dir{right:0; box-shadow:inset  34px 0 56px rgba(0,0,0,.55)}
+#loader.gone .pano.esq{transform:translateX(-101.5%)}
+#loader.gone .pano.dir{transform:translateX(101.5%)}
+
+.marca-entrada{
+  position:absolute; inset:0; display:grid; place-content:center; justify-items:center;
+  gap:18px; text-align:center; padding:20px;
+  transition:opacity .5s ease, transform .6s cubic-bezier(.22,1,.36,1);
+}
+#loader.gone .marca-entrada{opacity:0; transform:scale(1.14)}
+.marca-entrada img{
+  width:clamp(84px,18vw,118px); height:auto; display:block;
+  filter:drop-shadow(0 0 26px rgba(0,0,0,.6));
+  animation:pulsa 1.9s ease-in-out infinite;
+}
+@keyframes pulsa{0%,100%{transform:scale(1)}50%{transform:scale(1.055)}}
+.marca-entrada p{
+  font-family:var(--mono); font-size:10px; letter-spacing:.3em; text-transform:uppercase;
+  color:rgba(255,255,255,.62); margin:0;
+}
+#loader .err{
+  color:var(--pink2); max-width:420px; font-family:var(--body); letter-spacing:0;
+  text-transform:none; font-size:14px; line-height:1.6;
+}
+
+/* título e controles sobem depois que a cortina abre
+   (body:not(.entrou) para não ser sobrescrito pelas regras de .race mais abaixo) */
+.hero-title h1, .hero-title p, .race{
+  transition:opacity .9s ease, transform .9s cubic-bezier(.22,1,.36,1);
+}
+body:not(.entrou) .hero-title h1,
+body:not(.entrou) .hero-title p{opacity:0; transform:translateY(16px)}
+body:not(.entrou) .race{opacity:0; transform:translateX(-50%) translateY(16px)}
+body.entrou .hero-title h1{transition-delay:.42s}
+body.entrou .hero-title p {transition-delay:.60s}
+body.entrou .race         {transition-delay:.78s}
+
+@media(prefers-reduced-motion:reduce){
+  .pano{transition-duration:.45s}
+  .marca-entrada img{animation:none}
+  .hero-title h1, .hero-title p, .race{transition-duration:.3s}
+}
 
 /* hotspot markers */
 .hs{
@@ -148,7 +196,7 @@ nav a:hover{color:var(--paper)}
   font-family:var(--mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:#6e6679;
   text-align:center; transition:opacity .4s;
 }
-.hint.gone{opacity:0}
+.hint.gone, .hint.escondido{opacity:0}
 
 /* ---------- info panel ---------- */
 #panel{
@@ -419,12 +467,14 @@ footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20p
     <button id="som" title="Som" aria-label="Desligar som">🔊</button>
   </div>
 
-  <p class="hint" id="hint">Arraste para girar · toque nos pontos rosa</p>
+  <p class="hint escondido" id="hint">Arraste para girar · toque nos pontos rosa</p>
 
   <div id="loader">
-    <div>
-      <div class="spin"></div>
-      <p id="loadMsg">Montando o protótipo…</p>
+    <div class="pano esq"></div>
+    <div class="pano dir"></div>
+    <div class="marca-entrada">
+      <img src="img/logo-vm.png" alt="Velozes e Maldosos">
+      <p id="loadMsg">Preparando a corrida…</p>
     </div>
   </div>
 </header>
@@ -610,8 +660,10 @@ async function carregar3D(){
   return false;
 }
 if(!await carregar3D()){
-  document.getElementById('loader').innerHTML =
-    '<p class="err">Não consegui carregar a biblioteca 3D agora — isso costuma ser a conexão. Recarregue a página que ela volta. O resto do site funciona normalmente, é só rolar para baixo.</p>';
+  const l = document.getElementById('loader');
+  l.classList.add('erro');
+  l.innerHTML = '<div class="marca-entrada"><p class="err">Não consegui carregar a biblioteca 3D agora — isso costuma ser a conexão. Recarregue a página que ela volta. O resto do site funciona normalmente, é só rolar para baixo.</p></div>';
+  document.body.classList.add('entrou');
   throw new Error('3D indisponível');
 }
 
@@ -994,7 +1046,10 @@ function comFator(pos, tgt, ajustar=false){
   return tgt.clone().add(dir.setLength(len));
 }
 atualizarFator();
-camera.position.copy(comFator(HOME.pos, HOME.tgt, true));
+// pose de abertura: rente à mesa, de frente, como quem chega perto para olhar
+const ENTRADA = {pos:new THREE.Vector3(-20, 5, 46), tgt:new THREE.Vector3(0, 9, 0)};
+camera.position.copy(comFator(ENTRADA.pos, ENTRADA.tgt));
+controls.target.copy(ENTRADA.tgt);
 
 /* ---------- materiais ---------- */
 const mPreto  = new THREE.MeshStandardMaterial({map:texPreto(), color:0xffffff, roughness:0.42, metalness:0.12});
@@ -1578,11 +1633,28 @@ function loop(now){
   renderer.render(scene, camera);
 }
 
-/* ---------- boot ---------- */
+/* ---------- boot: abre a cortina e sobe a câmera ---------- */
 resize();
 requestAnimationFrame(loop);
-setTimeout(()=>document.getElementById('loader').classList.add('gone'), 450);
-setTimeout(()=>document.getElementById('hint').classList.add('gone'), 9000);
+
+const palcoEl = document.getElementById('loader');
+const devagar = matchMedia('(prefers-reduced-motion:reduce)').matches;
+let entrou = false;
+function abrirCortina(){
+  if(entrou) return; entrou = true;
+  palcoEl.classList.add('gone');
+  document.body.classList.add('entrou');
+  // o voo começa junto com a cortina: a pessoa vê o protótipo "se montando"
+  voarPara(HOME.pos, HOME.tgt, devagar ? 400 : 2400, 'ajustar');
+  setTimeout(()=>document.getElementById('hint').classList.remove('escondido'), devagar ? 400 : 2300);
+  setTimeout(()=>document.getElementById('hint').classList.add('gone'), 13000);
+}
+// dá dois quadros para a primeira renderização ficar pronta antes de revelar
+requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  setTimeout(abrirCortina, devagar ? 100 : 620);
+}));
+// tocar na cortina adianta a abertura
+palcoEl.addEventListener('pointerdown', abrirCortina);
 
 /* reveals */
 const io = new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} }), {threshold:.12});
