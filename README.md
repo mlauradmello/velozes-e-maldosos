@@ -27,10 +27,9 @@ fotos do protótipo real.
 | 2 | Motores amarelos (TT) |
 | 3 | Botões de fliperama |
 | 2 | LEDs (verde e vermelho) |
+| 1 | Buzzer |
 | 2 | Pilhas recarregáveis (alimentação do módulo) |
 | — | Jumpers |
-
-Manutenção pela traseira: abertura com cortina de feltro vermelho dá acesso a todo o sistema.
 
 ## O site
 
