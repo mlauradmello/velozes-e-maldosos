@@ -1037,23 +1037,46 @@ const HOME = {pos:new THREE.Vector3(41,31,63), tgt:new THREE.Vector3(0,11.5,0)};
 
 /* ---- enquadramento: telas estreitas precisam da câmera mais longe ---- */
 const ASPECTO_REF = 1.6;                  // proporção para a qual as vistas foram ajustadas
-function distanciaMinima(aspecto){
+// caixa que envolve tudo: corpo, cenário, caixinha à esquerda, botão à direita, cortina atrás
+const CAIXA_MIN = new THREE.Vector3(-34.5, 0, -14.6);
+const CAIXA_MAX = new THREE.Vector3( 29.5, 29.2, 12.6);
+
+/* Distância exata para o protótipo INTEIRO caber, dada a direção da câmera.
+   Projeta os 8 cantos da caixa nos eixos da câmera: numa vista em três quartos
+   o canto da frente fica bem mais perto que o centro, e era isso que cortava. */
+function distanciaParaCaber(dirUnit, tgt, aspecto){
   const vfov = camera.fov*Math.PI/180;
   const hfov = 2*Math.atan(Math.tan(vfov/2)*aspecto);
-  const dh = 30.0 / Math.tan(hfov/2);     // meia-largura do protótipo (com a caixinha)
-  const dv = 17.5 / Math.tan(vfov/2);     // do alvo até o topo do cenário
-  return (Math.max(dh,dv) + D/2) * 1.04;
+  const ty = Math.tan(vfov/2), tx = Math.tan(hfov/2);
+  const fwd = dirUnit.clone().negate();                 // da câmera para o alvo
+  const aux = (Math.abs(fwd.x) < 1e-6 && Math.abs(fwd.z) < 1e-6)
+    ? new THREE.Vector3(0,0,1) : new THREE.Vector3(0,1,0);
+  const right = new THREE.Vector3().crossVectors(fwd, aux).normalize();
+  const up    = new THREE.Vector3().crossVectors(right, fwd).normalize();
+  const p = new THREE.Vector3();
+  let d = 0;
+  for(let i=0;i<8;i++){
+    p.set(i&1 ? CAIXA_MAX.x : CAIXA_MIN.x,
+          i&2 ? CAIXA_MAX.y : CAIXA_MIN.y,
+          i&4 ? CAIXA_MAX.z : CAIXA_MIN.z).sub(tgt);
+    const z = p.dot(fwd), x = Math.abs(p.dot(right)), y = Math.abs(p.dot(up));
+    d = Math.max(d, x/tx - z, y/ty - z);
+  }
+  return d * 1.04;
 }
+
+const DIR_HOME = new THREE.Vector3().subVectors(HOME.pos, HOME.tgt).normalize();
 let fator = 1;
 function atualizarFator(){
-  fator = Math.max(1, distanciaMinima(camera.aspect) / distanciaMinima(ASPECTO_REF));
+  fator = Math.max(1, distanciaParaCaber(DIR_HOME, HOME.tgt, camera.aspect)
+                    / distanciaParaCaber(DIR_HOME, HOME.tgt, ASPECTO_REF));
 }
 // escalar = afasta na proporção da tela (bom para os closes dos pontos)
 // ajustar = além disso, garante que o protótipo INTEIRO caiba (vista geral e corrida)
 function comFator(pos, tgt, ajustar=false){
   const dir = pos.clone().sub(tgt);
   let len = dir.length() * fator;
-  if(ajustar) len = Math.max(len, distanciaMinima(camera.aspect));
+  if(ajustar) len = Math.max(len, distanciaParaCaber(dir.clone().normalize(), tgt, camera.aspect));
   len = Math.min(len, controls.maxDistance);
   return tgt.clone().add(dir.setLength(len));
 }
