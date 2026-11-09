@@ -319,9 +319,14 @@ section{padding:clamp(66px,9vw,120px) 0; border-bottom:1px solid var(--line); sc
   background:linear-gradient(transparent,rgba(5,5,8,.9));
   font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:#ddd6e4;
 }
+/* a foto do conjunto é quase quadrada: ocupa duas colunas e aparece inteira,
+   sem corte, com o fundo escuro preenchendo o resto */
 .gallery figure.wide{grid-column:span 2}
-.gallery figure.wide img{aspect-ratio:16/11}
-@media(max-width:560px){ .gallery figure.wide{grid-column:span 1} .gallery figure.wide img{aspect-ratio:4/3} }
+.gallery figure.wide img{aspect-ratio:16/11; object-fit:contain; background:#0b0b0f}
+@media(max-width:560px){
+  .gallery figure.wide{grid-column:span 1}
+  .gallery figure.wide img{aspect-ratio:1/1}
+}
 
 footer{padding:52px 0 64px; color:var(--muted); font-size:13px}
 footer .wrap{display:flex; flex-wrap:wrap; gap:18px; justify-content:space-between; align-items:center}
@@ -510,14 +515,14 @@ footer b i{color:var(--paper); font-style:normal; font-size:.6em; vertical-align
       <h2>Fora do 3D, <i>em cima da mesa</i>.</h2>
     </div>
     <div class="gallery reveal">
-      <figure class="wide"><img src="img/frente.jpg" alt="Vista frontal do protótipo" loading="lazy"><figcaption>Vista frontal — botões, LEDs e o letreiro</figcaption></figure>
-      <figure><img src="img/carrinhos.jpg" alt="Os dois carrinhos na pista vistos de cima" loading="lazy"><figcaption>Os carrinhos na largada</figcaption></figure>
-      <figure><img src="img/conjunto.jpg" alt="Protótipo visto de três quartos" loading="lazy"><figcaption>O conjunto montado</figcaption></figure>
-      <figure><img src="img/jogando.jpg" alt="Duas pessoas jogando" loading="lazy"><figcaption>Em disputa</figcaption></figure>
-      <figure><img src="img/gaveta.jpg" alt="Gaveta lateral com a logo VM" loading="lazy"><figcaption>A gaveta lateral</figcaption></figure>
-      <figure><img src="img/detalhe.jpg" alt="Detalhe do buzzer na quina da caixa" loading="lazy"><figcaption>O buzzer, na lateral esquerda</figcaption></figure>
-      <figure><img src="img/traseira.jpg" alt="Traseira do protótipo com a cortina vermelha" loading="lazy"><figcaption>A cortina vermelha, fechada</figcaption></figure>
-      <figure><img src="img/interna.jpg" alt="Sistema interno: motores, placas e fiação" loading="lazy"><figcaption>Atrás dela: motores, placas e fiação</figcaption></figure>
+      <figure class="wide"><img src="img/conjunto.jpg" alt="O protótipo inteiro visto de três quartos" loading="lazy"><figcaption>O conjunto montado, de ponta a ponta</figcaption></figure>
+      <figure><img src="img/jogando.jpg" alt="Duas pessoas jogando ao mesmo tempo" loading="lazy"><figcaption>Dois jogadores, uma corrida</figcaption></figure>
+      <figure><img src="img/disputa.jpg" alt="Mão apertando o botão arcade durante a corrida" loading="lazy"><figcaption>Mão no botão, carrinhos na pista</figcaption></figure>
+      <figure><img src="img/chegada.jpg" alt="Os carrinhos cruzando a faixa quadriculada" loading="lazy"><figcaption>A chegada, e o restart na lateral</figcaption></figure>
+      <figure><img src="img/painel.jpg" alt="Botão azul, LED vermelho e as lápides dos vilões" loading="lazy"><figcaption>Botão, LED e as lápides</figcaption></figure>
+      <figure><img src="img/lapides.jpg" alt="As cabeças dos vilões alinhadas no painel" loading="lazy"><figcaption>Os vilões, em miniatura</figcaption></figure>
+      <figure><img src="img/gaveta.jpg" alt="Gaveta lateral aberta com a logo VM" loading="lazy"><figcaption>A gaveta aberta e a largada</figcaption></figure>
+      <figure><img src="img/lateral.jpg" alt="Lateral do protótipo com a cortina vermelha ao fundo" loading="lazy"><figcaption>A lateral, com a cortina ao fundo</figcaption></figure>
     </div>
   </div>
 </section>
