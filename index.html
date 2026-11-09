@@ -857,11 +857,17 @@ let fator = 1;
 function atualizarFator(){
   fator = Math.max(1, distanciaMinima(camera.aspect) / distanciaMinima(ASPECTO_REF));
 }
-function comFator(pos, tgt){
-  return tgt.clone().add(pos.clone().sub(tgt).multiplyScalar(fator));
+// escalar = afasta na proporção da tela (bom para os closes dos pontos)
+// ajustar = além disso, garante que o protótipo INTEIRO caiba (vista geral e corrida)
+function comFator(pos, tgt, ajustar=false){
+  const dir = pos.clone().sub(tgt);
+  let len = dir.length() * fator;
+  if(ajustar) len = Math.max(len, distanciaMinima(camera.aspect));
+  len = Math.min(len, controls.maxDistance);
+  return tgt.clone().add(dir.setLength(len));
 }
 atualizarFator();
-camera.position.copy(comFator(HOME.pos, HOME.tgt));
+camera.position.copy(comFator(HOME.pos, HOME.tgt, true));
 
 /* ---------- materiais ---------- */
 const mPreto  = new THREE.MeshStandardMaterial({map:texPreto(), color:0xffffff, roughness:0.42, metalness:0.12});
@@ -1220,19 +1226,19 @@ addEventListener('keydown', e=>{ if(e.key==='Escape') fechar(); });
 
 /* ---------- câmera animada ---------- */
 let fly = null;
-function voarPara(pos, tgt, dur=950, escalar=true){
-  const destino = escalar ? comFator(pos, tgt) : pos.clone();
+function voarPara(pos, tgt, dur=950, modo='escalar'){
+  const destino = modo === 'nenhum' ? pos.clone() : comFator(pos, tgt, modo === 'ajustar');
   fly = {t:0, dur, p0:camera.position.clone(), p1:destino, t0:controls.target.clone(), t1:tgt.clone()};
 }
 const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
 
-document.getElementById('reset').onclick = ()=>{ voarPara(HOME.pos, HOME.tgt); fechar(); };
+document.getElementById('reset').onclick = ()=>{ voarPara(HOME.pos, HOME.tgt, 950, 'ajustar'); fechar(); };
 document.getElementById('zin').onclick  = ()=>zoom(0.82);
 document.getElementById('zout').onclick = ()=>zoom(1.22);
 function zoom(f){
   const dir = camera.position.clone().sub(controls.target);
   const len = THREE.MathUtils.clamp(dir.length()*f, controls.minDistance, controls.maxDistance);
-  voarPara(controls.target.clone().add(dir.setLength(len)), controls.target.clone(), 380, false);
+  voarPara(controls.target.clone().add(dir.setLength(len)), controls.target.clone(), 380, 'nenhum');
 }
 
 /* ============================================================
@@ -1314,7 +1320,7 @@ function resetCorrida(){
 document.getElementById('startBtn').onclick = ()=>{
   audio();                               // destrava o som no clique do usuário
   resetCorrida();
-  voarPara(new THREE.Vector3(0,40,46), new THREE.Vector3(0,13,-3), 850);
+  voarPara(new THREE.Vector3(0,40,46), new THREE.Vector3(0,13,-3), 850, 'ajustar');
   document.getElementById('hint').classList.add('gone');
   let n = 3;
   cdEl.classList.add('on'); cdEl.textContent = n; somContagem(n);
