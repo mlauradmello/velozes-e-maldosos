@@ -66,3 +66,8 @@ Projeto acadêmico do curso de Design da CESAR School, no Recife.
 - Lucas Regis
 - Maria Laura de Méllo
 - Pâmella Capistrano
+
+**Orientação**
+
+- Henrique Mineiro
+- Gibson Nunes

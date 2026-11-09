@@ -412,6 +412,7 @@ footer .wrap{display:grid; grid-template-columns:1fr 1fr; gap:clamp(32px,5vw,64p
 .equipe{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 24px}
 @media(max-width:430px){ .equipe{grid-template-columns:1fr} }
 .equipe li{font-size:12.5px; color:#ded7e4; font-weight:400}
+.pe-equipe h4.orientacao{margin-top:24px}
 
 footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20px; border-top:1px solid var(--line)}
 .pe-fim small{font-family:var(--mono); font-size:9px; letter-spacing:.08em; color:#4f4858; line-height:1.9}
@@ -631,6 +632,11 @@ footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20p
         <li>Lucas Regis</li>
         <li>Maria Laura de Méllo</li>
         <li>Pâmella Capistrano</li>
+      </ul>
+      <h4 class="orientacao">Orientação</h4>
+      <ul class="equipe">
+        <li>Henrique Mineiro</li>
+        <li>Gibson Nunes</li>
       </ul>
     </div>
   </div>
@@ -1132,7 +1138,7 @@ function add(mesh, cast=true, rec=true){ mesh.castShadow=cast; mesh.receiveShado
    ============================================================ */
 const BACK_Z = TRACK_Z0 - 0.1;        // -12.6
 const AB_W = 44, AB_Y0 = 2.0, AB_Y1 = 10.0;   // vão da abertura
-let cortina;
+let cortina, luzVao1, luzVao2;
 {
   // moldura em volta do vão
   const poste = (W-AB_W)/2;                                  // 5.5
@@ -1216,6 +1222,12 @@ let cortina;
   // sanefa fina que prende o feltro no topo
   const sanefa=peca(new THREE.BoxGeometry(CW+0.6,0.8,1.5), mFosco, 0, AB_Y1+0.8, BACK_Z-0.75);
   sanefa.castShadow=true;
+
+  // Luz dentro do vão: o cenário e os refletores vêm todos da frente, então o
+  // miolo ficaria preto. Estas acendem conforme a cortina sobe.
+  luzVao1 = new THREE.PointLight(0xfff2e0, 0, 34, 2); luzVao1.position.set(2, 8.6, -5.5);
+  luzVao2 = new THREE.PointLight(0xffe8cc, 0, 30, 2); luzVao2.position.set(-15, 7.6, -7.0);
+  model.add(luzVao1, luzVao2);
 }
 let cortinaAlvo = 1;   // 1 = fechada · 0.16 = levantada
 /* ---------- árvores secas ---------- */
@@ -1661,6 +1673,10 @@ function loop(now){
   // cortina enrola para o varão: Y e Z juntos, senão as pregas viram espetos
   const sc = cortina.scale.y + (cortinaAlvo - cortina.scale.y) * Math.min(1, dt*3.6);
   cortina.scale.set(1, sc, Math.max(0.12, sc));
+  // a luz do vão acompanha a abertura: fechada = apagada, aberta = sistema à mostra
+  const aberta = Math.max(0, (1 - sc) / 0.84);
+  luzVao1.intensity = aberta * 210;
+  luzVao2.intensity = aberta * 150;
 
   // botões afundam quando clicados
   btnMeshes.forEach((m,i)=>{
