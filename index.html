@@ -65,7 +65,18 @@ nav a:hover{color:var(--paper)}
   content:""; position:absolute; inset:0; pointer-events:none;
   background:radial-gradient(60% 55% at 50% 42%, transparent 55%, rgba(0,0,0,.55) 100%);
 }
-#scene{position:absolute; inset:0; display:block; width:100%; height:100%; touch-action:none}
+/* pan-y: deslizar para cima e para baixo rola a página;
+   deslizar de lado gira o modelo. A página nunca fica presa aqui. */
+#scene{position:absolute; inset:0; display:block; width:100%; height:100%; touch-action:pan-y}
+
+.toast{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.96);
+  z-index:7; pointer-events:none; opacity:0; transition:.25s cubic-bezier(.22,1,.36,1);
+  background:rgba(10,10,14,.92); border:1px solid var(--line); border-radius:999px;
+  padding:10px 20px; font-family:var(--mono); font-size:10.5px; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--paper); backdrop-filter:blur(10px); white-space:nowrap;
+}
+.toast.on{opacity:1; transform:translate(-50%,-50%) scale(1)}
 #marks{position:absolute; inset:0; pointer-events:none; z-index:3}
 
 .hero-title{
@@ -328,29 +339,29 @@ section{padding:clamp(66px,9vw,120px) 0; border-bottom:1px solid var(--line); sc
   .gallery figure.wide img{aspect-ratio:1/1}
 }
 
-footer{padding:clamp(54px,7vw,82px) 0 46px; color:var(--muted); font-size:13px}
+footer{padding:clamp(46px,6vw,70px) 0 40px; color:var(--muted); font-size:12px}
 footer .wrap{display:grid; grid-template-columns:1fr 1fr; gap:clamp(32px,5vw,64px); align-items:start}
 @media(max-width:760px){ footer .wrap{grid-template-columns:1fr; gap:38px} }
 
-.pe-marca{display:flex; align-items:center; gap:12px; margin-bottom:20px}
-.pe-marca img{width:40px; height:40px; display:block; flex:0 0 auto}
-.pe-marca b{font-family:var(--display); font-weight:400; font-size:18px; color:var(--pink); letter-spacing:.01em; white-space:nowrap}
+.pe-marca{display:flex; align-items:center; gap:10px; margin-bottom:16px}
+.pe-marca img{width:30px; height:30px; display:block; flex:0 0 auto}
+.pe-marca b{font-family:var(--display); font-weight:400; font-size:15px; color:var(--pink); letter-spacing:.01em; white-space:nowrap}
 .pe-marca b i{color:var(--paper); font-style:normal; font-size:.6em; vertical-align:.12em; margin-inline:.38em}
-.pe-sobre p{margin:0; font-size:14.5px; color:#b3abbe; line-height:1.7; max-width:42ch}
+.pe-sobre p{margin:0; font-size:12.5px; color:#a79fb3; line-height:1.72; max-width:46ch}
 .pe-sobre strong{color:var(--paper); font-weight:500}
 
 .pe-equipe h4{
-  font-family:var(--mono); font-size:10px; letter-spacing:.24em; text-transform:uppercase;
-  color:var(--pink2); margin:0 0 18px; font-weight:400;
-  display:flex; align-items:center; gap:14px;
+  font-family:var(--mono); font-size:9px; letter-spacing:.24em; text-transform:uppercase;
+  color:var(--pink2); margin:0 0 15px; font-weight:400;
+  display:flex; align-items:center; gap:13px;
 }
 .pe-equipe h4::after{content:""; flex:1; height:1px; background:var(--line)}
-.equipe{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 26px}
+.equipe{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 24px}
 @media(max-width:430px){ .equipe{grid-template-columns:1fr} }
-.equipe li{font-size:14.5px; color:var(--paper); font-weight:400}
+.equipe li{font-size:12.5px; color:#ded7e4; font-weight:400}
 
-footer .pe-fim{display:block; margin-top:clamp(38px,5vw,58px); padding-top:24px; border-top:1px solid var(--line)}
-.pe-fim small{font-family:var(--mono); font-size:10px; letter-spacing:.09em; color:#574f61; line-height:1.9}
+footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20px; border-top:1px solid var(--line)}
+.pe-fim small{font-family:var(--mono); font-size:9px; letter-spacing:.08em; color:#4f4858; line-height:1.9}
 .reveal{opacity:0; transform:translateY(22px); transition:opacity .8s ease, transform .8s cubic-bezier(.22,1,.36,1)}
 .reveal.in{opacity:1; transform:none}
 @media(prefers-reduced-motion:reduce){ .reveal{opacity:1;transform:none} html{scroll-behavior:auto} }
@@ -381,6 +392,7 @@ footer .pe-fim{display:block; margin-top:clamp(38px,5vw,58px); padding-top:24px;
     <p>Jogo de corrida · Arduino · 55 × 29 cm</p>
   </div>
 
+  <div class="toast" id="toast"></div>
   <div class="countdown" id="cd"></div>
   <div class="winner" id="win"><span>Chegou primeiro</span><strong id="winName"></strong></div>
 
@@ -933,6 +945,30 @@ controls.minPolarAngle = 0.18; controls.maxPolarAngle = Math.PI*0.49;
 controls.enablePan = false; controls.zoomSpeed = 0.7; controls.rotateSpeed = 0.75;
 controls.target.set(0, 11.5, 0);
 
+/* ---- a roda do mouse rola a PÁGINA; só com Ctrl (ou pinça no trackpad) dá zoom ----
+   Captura no elemento pai: sem Ctrl o evento nem chega ao canvas, então o
+   navegador rola normalmente e o visualizador não "prende" a página.        */
+{
+  const palco = document.querySelector('.viewer');
+  let avisos = 0, ultimoAviso = -1e9;   // -1e9 para o primeiro aviso sair na hora
+  palco.addEventListener('wheel', e=>{
+    if(e.ctrlKey || e.metaKey) return;          // deixa passar: o OrbitControls dá zoom
+    e.stopPropagation();                        // o canvas não recebe -> a página rola
+    const agora = performance.now();
+    if(avisos < 2 && agora - ultimoAviso > 4000){
+      avisos++; ultimoAviso = agora;
+      dica('Ctrl + rolagem, ou os botões, para aproximar');
+    }
+  }, {capture:true, passive:true});
+}
+let avisoTimer = null;
+function dica(texto){
+  const t = document.getElementById('toast');
+  t.textContent = texto; t.classList.add('on');
+  clearTimeout(avisoTimer);
+  avisoTimer = setTimeout(()=>t.classList.remove('on'), 2000);
+}
+
 const HOME = {pos:new THREE.Vector3(41,31,63), tgt:new THREE.Vector3(0,11.5,0)};
 
 /* ---- enquadramento: telas estreitas precisam da câmera mais longe ---- */
@@ -1456,7 +1492,9 @@ const ehToque = matchMedia('(hover:none) and (pointer:coarse)').matches
              || navigator.maxTouchPoints > 0;
 if(ehToque){
   document.body.classList.add('toque');
-  document.getElementById('hint').textContent = 'Deslize para girar · toque nos pontos rosa';
+  document.getElementById('hint').textContent = 'Deslize de lado para girar · toque nos pontos rosa';
+}else{
+  document.getElementById('hint').textContent = 'Arraste para girar · Ctrl + rolagem aproxima · clique nos pontos rosa';
 }
 
 document.querySelectorAll('.lane-ui button').forEach(b=>{
