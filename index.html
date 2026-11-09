@@ -178,6 +178,7 @@ body.entrou .race         {transition-delay:.78s}
 }
 .hs:hover .tag, .hs:focus-visible .tag{opacity:1; transform:translateY(-50%) translateX(0)}
 .hs.active .dot{background:var(--paper); animation:none}
+.hs.active{opacity:0; pointer-events:none}   /* aberto, o marcador so atrapalha a vista */
 @media(max-width:720px){
   .hs .tag{display:none}
   .hs .dot{width:11px; height:11px; border-width:1.5px}
@@ -224,7 +225,7 @@ body.entrou .race         {transition-delay:.78s}
 }
 #panel li b{color:var(--paper); font-weight:500; flex:0 0 108px; font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; padding-top:3px}
 @media(max-width:720px){
-  #panel{top:auto; bottom:0; height:auto; max-height:78svh; width:100%; border-left:0; border-top:1px solid var(--line);
+  #panel{top:auto; bottom:0; height:auto; max-height:62svh; width:100%; border-left:0; border-top:1px solid var(--line);
     border-radius:20px 20px 0 0; transform:translateY(103%); padding:26px 22px 34px}
   #panel li{flex-direction:column; gap:3px}
   #panel li b{flex:none}
@@ -1446,7 +1447,8 @@ function abrir(p, el){
   document.getElementById('pLead').textContent = p.lead;
   document.getElementById('pList').innerHTML = p.list.map(([k,v])=>`<li><b>${k}</b><span>${v}</span></li>`).join('');
   panel.classList.add('open'); scrim.classList.add('on');
-  voarPara(p.cam, p.tgt);
+  const v = vistaAcimaDoPainel(p.cam, p.tgt);
+  voarPara(v.cam, v.tgt);
   cortinaAlvo = p.cortina ? 0.16 : 1;      // levanta a cortina só no ponto da traseira
   document.getElementById('hint').classList.add('gone');
 }
@@ -1458,6 +1460,16 @@ function fechar(){
 document.getElementById('panelClose').onclick = fechar;
 scrim.onclick = fechar;
 addEventListener('keydown', e=>{ if(e.key==='Escape') fechar(); });
+
+/* No celular o painel sobe de baixo e cobre o meio da tela. Descemos a mira
+   da câmera para o assunto aparecer na faixa que continua visível em cima. */
+function vistaAcimaDoPainel(cam, tgt){
+  if(!ehToque) return {cam, tgt};
+  const d = cam.distanceTo(tgt);
+  const alturaVisivel = 2 * d * Math.tan(camera.fov * Math.PI / 360);
+  const desloc = alturaVisivel * 0.22;
+  return { cam: cam.clone().setY(cam.y - desloc), tgt: tgt.clone().setY(tgt.y - desloc) };
+}
 
 /* ---------- câmera animada ---------- */
 let fly = null;
