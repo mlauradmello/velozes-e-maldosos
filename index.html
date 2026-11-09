@@ -244,6 +244,34 @@ body.entrou .race         {transition-delay:.78s}
   box-shadow:0 10px 34px rgba(239,27,125,.36); transition:.2s;
 }
 .race .start:hover{transform:translateY(-2px); box-shadow:0 14px 40px rgba(239,27,125,.5)}
+/* escolha de piloto, antes da largada */
+.pilotos{display:flex; gap:12px; margin-bottom:12px}
+.race.live .pilotos{display:none}
+.esc{
+  flex:1; background:rgba(10,10,14,.84); border:1px solid var(--line);
+  border-radius:14px; padding:9px 10px 10px; backdrop-filter:blur(10px); text-align:left;
+}
+.esc .nm{
+  display:block; font-family:var(--mono); font-size:9px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:8px;
+}
+.esc button{
+  display:block; width:100%; margin-top:5px; padding:7px 9px; border-radius:9px; cursor:pointer;
+  background:transparent; border:1px solid var(--line); color:#b2aabd;
+  font-family:var(--body); font-size:12.5px; text-align:left; transition:.16s;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+}
+.esc button:first-of-type{margin-top:0}
+.esc button:hover{color:var(--paper); border-color:#3a3a47}
+.esc.g button.on{border-color:var(--green); color:var(--green); background:rgba(62,232,116,.11)}
+.esc.r button.on{border-color:var(--red);   color:var(--red);   background:rgba(255,59,77,.11)}
+@media(max-width:600px){
+  .pilotos{gap:9px; margin-bottom:9px}
+  .esc{padding:8px 8px 9px; border-radius:12px}
+  .esc .nm{font-size:8px; margin-bottom:6px}
+  .esc button{font-size:11.5px; padding:8px}
+}
+
 .race .play{display:none; gap:12px; align-items:stretch}
 .race.live .play{display:flex}
 .race.live .start{display:none}
@@ -449,9 +477,21 @@ footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20p
 
   <div class="toast" id="toast"></div>
   <div class="countdown" id="cd"></div>
-  <div class="winner" id="win"><span>Chegou primeiro</span><strong id="winName"></strong></div>
+  <div class="winner" id="win"><span id="winSub">Chegou primeiro</span><strong id="winName"></strong></div>
 
   <div class="race" id="race">
+    <div class="pilotos">
+      <div class="esc g">
+        <span class="nm">Jogador 1 · verde</span>
+        <button data-p="0" data-i="0" class="on">A Condessa</button>
+        <button data-p="0" data-i="1">Mestre Corvo</button>
+      </div>
+      <div class="esc r">
+        <span class="nm">Jogador 2 · vermelho</span>
+        <button data-p="1" data-i="0" class="on">O Carrasco</button>
+        <button data-p="1" data-i="1">Dona Ruína</button>
+      </div>
+    </div>
     <button class="start" id="startBtn">▶ Apostar uma corrida</button>
     <div class="play">
       <div class="lane-ui g">
@@ -1332,8 +1372,60 @@ const leds = [ led(-7.5, 0x3ee874), led(7.5, 0xff3b4d) ];
   }
 }
 
+/* ---------- pilotos: quatro vilões de invenção nossa ---------- */
+function piloto(tipo){
+  const m = new THREE.Group();
+  const add = (geo, mat, x=0, y=0, z=0) => {
+    const o = new THREE.Mesh(geo, mat); o.position.set(x,y,z); m.add(o); return o;
+  };
+  if(tipo === 'condessa'){                       // pele clara, gola alta e coroa de espigões
+    const pele  = new THREE.MeshStandardMaterial({color:0xd9d0e2, roughness:0.58});
+    const panoM = new THREE.MeshStandardMaterial({color:0x15151c, roughness:0.82});
+    add(new THREE.SphereGeometry(0.60,16,12), pele, 0, 0.12, 0);
+    const gola = add(new THREE.CylinderGeometry(0.98,0.46,1.05,16,1,true), panoM, -0.22,-0.14,0);
+    gola.rotation.z = 0.28; gola.material.side = THREE.DoubleSide;
+    for(let k=0;k<5;k++){
+      const a = (k-2)*0.5;
+      const e = add(new THREE.ConeGeometry(0.07,0.40,6), mOuro, Math.sin(a)*0.06, 0.76, Math.sin(a)*0.46);
+      e.rotation.x = -a*0.22;
+    }
+  }
+  else if(tipo === 'corvo'){                     // máscara de bico comprido e óculos redondos
+    const escuro = new THREE.MeshStandardMaterial({color:0x211d29, roughness:0.68});
+    add(new THREE.SphereGeometry(0.58,16,12), escuro);
+    const bico = add(new THREE.ConeGeometry(0.25,0.95,10), mOuro, 0.60,-0.06,0);
+    bico.rotation.z = -Math.PI/2;
+    add(new THREE.SphereGeometry(0.16,10,8), mOuro, 0.30, 0.18, 0.34);
+    add(new THREE.SphereGeometry(0.16,10,8), mOuro, 0.30, 0.18,-0.34);
+    add(new THREE.CylinderGeometry(0.50,0.52,0.11,14), escuro, 0, 0.60, 0);
+    add(new THREE.CylinderGeometry(0.29,0.32,0.40,14), escuro, 0, 0.82, 0);
+  }
+  else if(tipo === 'carrasco'){                  // capuz fechado com uma fresta acesa
+    const capuz = new THREE.MeshStandardMaterial({color:0x101016, roughness:0.92});
+    const cab = add(new THREE.SphereGeometry(0.64,16,12), capuz, 0, 0.05, 0);
+    cab.scale.set(1,1.12,1);
+    const ponta = add(new THREE.ConeGeometry(0.38,0.62,10), capuz, -0.22, 0.56, 0);
+    ponta.rotation.z = 0.42;
+    add(new THREE.BoxGeometry(0.1,0.13,0.70),
+        new THREE.MeshStandardMaterial({color:0xff4254, emissive:0xff3b4d, emissiveIntensity:2.4}),
+        0.55, 0.08, 0);
+  }
+  else {                                         // 'ruina': cabeça enfaixada e um olho aceso
+    const osso  = new THREE.MeshStandardMaterial({color:0xded6c6, roughness:0.86});
+    const faixa = new THREE.MeshStandardMaterial({color:0xb4a892, roughness:0.95});
+    add(new THREE.SphereGeometry(0.60,16,12), osso);
+    const f1 = add(new THREE.TorusGeometry(0.57,0.085,8,20), faixa, 0,-0.06,0); f1.rotation.x = Math.PI/2;
+    const f2 = add(new THREE.TorusGeometry(0.55,0.075,8,20), faixa, 0, 0.18,0);
+    f2.rotation.x = Math.PI/2; f2.rotation.z = 0.55;
+    add(new THREE.SphereGeometry(0.11,10,8),
+        new THREE.MeshStandardMaterial({color:0xff7a46, emissive:0xff5a2b, emissiveIntensity:2.6}),
+        0.48, 0.14, 0.19);
+  }
+  return m;
+}
+
 /* ---------- carrinhos ---------- */
-function carro(dotHex){
+function carro(dotHex, tipos){
   const g = new THREE.Group();
   const piso = new THREE.Mesh(new THREE.BoxGeometry(8.6,0.5,3.4), mCarro); piso.position.y=0.9; g.add(piso);
   const corpo= new THREE.Mesh(new THREE.BoxGeometry(5.0,1.5,2.1), mCarro); corpo.position.set(-0.2,1.75,0); g.add(corpo);
@@ -1350,11 +1442,12 @@ function carro(dotHex){
     const r = new THREE.Mesh(roda, mOuro);
     r.rotation.x = Math.PI/2; r.position.set(x,1.15,z); r.castShadow = true; g.add(r);
   });
-  // piloto
-  const cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.78,16,12), new THREE.MeshStandardMaterial({color:0x595168, roughness:0.75}));
-  cabeca.position.set(-0.4,3.0,0); g.add(cabeca);
+  // ombro do piloto (a cabeça vem logo abaixo, escolhida pelo jogador)
   const ombro = new THREE.Mesh(new THREE.CapsuleGeometry(0.55,0.5,4,10), new THREE.MeshStandardMaterial({color:0x1b1b22, roughness:0.8}));
   ombro.position.set(-0.9,2.6,0); ombro.rotation.z=Math.PI/2; g.add(ombro);
+  // encaixe das cabeças: as duas opções ficam prontas, só uma visível
+  const encaixe = new THREE.Group(); encaixe.position.set(-0.4,3.0,0); g.add(encaixe);
+  const pilotos = tipos.map((t,k)=>{ const cab=piloto(t); cab.visible = (k===0); encaixe.add(cab); return cab; });
   // bolinha de identificação no bico: verde é o jogador 1, vermelho é o jogador 2
   const dotMat = new THREE.MeshStandardMaterial({
     color:dotHex, emissive:dotHex, emissiveIntensity:1.5, roughness:0.22, metalness:0
@@ -1368,9 +1461,13 @@ function carro(dotHex){
   const glow = new THREE.PointLight(dotHex, 0, 12, 2); glow.position.set(0,0.6,0); g.add(glow);
   g.traverse(o=>{ if(o.isMesh) o.castShadow = true; });
   model.add(g);
-  return {g, glow, dotMat};
+  return {g, glow, dotMat, pilotos};
 }
-const cars = [ carro(0x3ee874), carro(0xff3b4d) ];
+const cars = [ carro(0x3ee874, ['condessa','corvo']),
+               carro(0xff3b4d, ['carrasco','ruina']) ];
+function trocarPiloto(jogador, k){
+  cars[jogador].pilotos.forEach((cab,j)=>{ cab.visible = (j===k); });
+}
 cars[0].g.position.set(RACE_X0, TRACK_Y, LANE_A);
 cars[1].g.position.set(RACE_X0, TRACK_Y, LANE_B);
 
@@ -1397,7 +1494,7 @@ const PONTOS = [
     cam:new THREE.Vector3(-14,22,24), tgt:new THREE.Vector3(-14,13.5,-1),
     eyebrow:'Elenco', title:'Preto, dourado e mal-intencionado',
     lead:'Dois carrinhos no estilo fórmula, pretos com rodas e detalhes dourados, cada um com um vilão no volante. Um leva a marca verde, o outro a vermelha — as mesmas cores dos LEDs do painel.',
-    list:[['Visual','Preto fosco com dourado, a cara do projeto'],['Identidade','Marca verde e marca vermelha'],['Pilotos','Um vilão em cada carro'],['Movimento','Puxados pelo motor ao longo da raia']] },
+    list:[['Visual','Preto fosco com dourado, a cara do projeto'],['Identidade','Marca verde e marca vermelha'],['Pilotos','Cada jogador escolhe o seu antes da largada'],['Movimento','Puxados pelo motor ao longo da raia']] },
 
   { id:'pista', tag:'A pista', pos:new THREE.Vector3(10,13.8,-4), n:new THREE.Vector3(0,1,0.25),
     cam:new THREE.Vector3(8,34,30), tgt:new THREE.Vector3(2,12,-3),
@@ -1601,6 +1698,9 @@ function vencer(i){
   cars[i].dotMat.emissiveIntensity = 5;      // a bolinha do vencedor acende
   document.getElementById('winName').textContent = i===0 ? 'JOGADOR 1' : 'JOGADOR 2';
   document.getElementById('winName').style.color = i===0 ? 'var(--green)' : 'var(--red)';
+  const escolhido = document.querySelector('.esc.' + (i===0 ? 'g' : 'r') + ' button.on');
+  document.getElementById('winSub').textContent =
+    escolhido ? 'Chegou primeiro · ' + escolhido.textContent : 'Chegou primeiro';
   winEl.classList.add('on');
   somVitoria();
   setTimeout(()=>{
@@ -1617,6 +1717,18 @@ if(ehToque){
 }else{
   document.getElementById('hint').textContent = 'Arraste para girar · Ctrl + rolagem aproxima · clique nos pontos rosa';
 }
+
+/* escolha do piloto: troca a cabeça no 3D e aproxima a câmera para a pessoa ver */
+document.querySelectorAll('.esc button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const jog = +b.dataset.p, k = +b.dataset.i;
+    trocarPiloto(jog, k);
+    b.parentElement.querySelectorAll('button').forEach(o=>o.classList.remove('on'));
+    b.classList.add('on');
+    voarPara(new THREE.Vector3(-8,20,28), new THREE.Vector3(-19,14.5,-1), 700);
+    dica((jog===0 ? 'Jogador 1' : 'Jogador 2') + ': ' + b.textContent);
+  });
+});
 
 document.querySelectorAll('.lane-ui button').forEach(b=>{
   const i = +b.dataset.p;
