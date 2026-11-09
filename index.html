@@ -1138,7 +1138,7 @@ function add(mesh, cast=true, rec=true){ mesh.castShadow=cast; mesh.receiveShado
    ============================================================ */
 const BACK_Z = TRACK_Z0 - 0.1;        // -12.6
 const AB_W = 44, AB_Y0 = 2.0, AB_Y1 = 10.0;   // vão da abertura
-let cortina, luzVao1, luzVao2;
+let cortina, luzVao1, luzVao2, luzVao3;
 {
   // moldura em volta do vão
   const poste = (W-AB_W)/2;                                  // 5.5
@@ -1227,7 +1227,8 @@ let cortina, luzVao1, luzVao2;
   // miolo ficaria preto. Estas acendem conforme a cortina sobe.
   luzVao1 = new THREE.PointLight(0xfff2e0, 0, 34, 2); luzVao1.position.set(2, 8.6, -5.5);
   luzVao2 = new THREE.PointLight(0xffe8cc, 0, 30, 2); luzVao2.position.set(-15, 7.6, -7.0);
-  model.add(luzVao1, luzVao2);
+  luzVao3 = new THREE.PointLight(0xfff0dd, 0, 26, 2); luzVao3.position.set(15, 7.8, -5.0);
+  model.add(luzVao1, luzVao2, luzVao3);
 }
 let cortinaAlvo = 1;   // 1 = fechada · 0.16 = levantada
 /* ---------- árvores secas ---------- */
@@ -1675,8 +1676,9 @@ function loop(now){
   cortina.scale.set(1, sc, Math.max(0.12, sc));
   // a luz do vão acompanha a abertura: fechada = apagada, aberta = sistema à mostra
   const aberta = Math.max(0, (1 - sc) / 0.84);
-  luzVao1.intensity = aberta * 210;
-  luzVao2.intensity = aberta * 150;
+  luzVao1.intensity = aberta * 95;
+  luzVao2.intensity = aberta * 70;
+  luzVao3.intensity = aberta * 58;
 
   // botões afundam quando clicados
   btnMeshes.forEach((m,i)=>{
