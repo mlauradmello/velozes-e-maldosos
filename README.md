@@ -9,17 +9,28 @@ fotos do protótipo real.
 
 ## O protótipo
 
+**Medidas**
+
 | | |
 |---|---|
 | Comprimento | 55 cm |
-| Altura total | 29 cm (com o painel do cenário) |
-| Pista | 45 cm, duas raias |
-| Controlador | Arduino |
-| Driver | Módulo L9110 (ponte H dupla) |
-| Motores | 2 × TT (os amarelos) |
-| Controles | 2 botões arcade com microswitch + botão de restart |
-| Sinalização | LED verde, LED vermelho e buzzer |
-| Manutenção | Abertura na traseira com cortina de feltro vermelho |
+| Altura total | 29 cm |
+| Pista | 45 cm, em duas raias |
+
+**Componentes eletrônicos**
+
+| Qtd | Componente |
+|---|---|
+| 1 | Arduino |
+| 1 | Protoboard |
+| 1 | Ponte H — módulo L9110 |
+| 2 | Motores amarelos (TT) |
+| 3 | Botões de fliperama |
+| 2 | LEDs (verde e vermelho) |
+| 2 | Pilhas recarregáveis (alimentação do módulo) |
+| — | Jumpers |
+
+Manutenção pela traseira: abertura com cortina de feltro vermelho dá acesso a todo o sistema.
 
 ## O site
 

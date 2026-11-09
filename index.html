@@ -273,13 +273,41 @@ section{padding:clamp(66px,9vw,120px) 0; border-bottom:1px solid var(--line); sc
 .step h3{font-size:20px; margin-bottom:9px; position:relative}
 .step p{margin:0; font-size:14px; color:#aaa2b6; position:relative}
 
-/* anel por célula: células vazias da última linha não viram bloco cinza */
-.specs{display:grid; grid-template-columns:repeat(1,1fr); gap:1px; border-radius:16px; overflow:hidden; box-shadow:0 0 0 1px var(--line)}
-@media(min-width:560px){ .specs{grid-template-columns:repeat(3,1fr)} }
-.spec{background:var(--ink2); padding:22px 20px; box-shadow:0 0 0 1px var(--line)}
-.spec dt{font-family:var(--mono); font-size:10px; letter-spacing:.17em; text-transform:uppercase; color:var(--muted); margin-bottom:9px}
-.spec dd{margin:0; font-family:var(--head); font-weight:800; font-size:22px; color:var(--paper)}
-.spec dd small{display:block; font-family:var(--body); font-weight:300; font-size:12.5px; color:var(--muted); margin-top:5px; line-height:1.5}
+/* subtítulo de bloco dentro de uma seção */
+.bloco-titulo{
+  font-family:var(--mono); font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+  color:var(--pink2); font-weight:400; margin:0 0 20px;
+  display:flex; align-items:center; gap:16px;
+}
+.bloco-titulo::after{content:""; flex:1; height:1px; background:var(--line)}
+
+/* as três medidas, em destaque */
+.medidas{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:1px;
+  margin:0 0 clamp(46px,6.5vw,76px);
+  border-radius:16px; overflow:hidden; box-shadow:0 0 0 1px var(--line);
+}
+.medidas > div{background:var(--ink2); padding:26px 22px 24px; box-shadow:0 0 0 1px var(--line)}
+.medidas dt{font-family:var(--mono); font-size:10px; letter-spacing:.17em; text-transform:uppercase; color:var(--muted); margin-bottom:12px}
+.medidas dd{margin:0; font-family:var(--head); font-weight:900; font-size:clamp(40px,6vw,58px); line-height:.95; color:var(--paper)}
+.medidas dd span{font-family:var(--body); font-weight:300; font-size:.32em; color:var(--pink2); margin-left:.2em; letter-spacing:.01em}
+.medidas small{display:block; font-size:12.5px; color:var(--muted); margin-top:12px; line-height:1.5}
+@media(max-width:620px){ .medidas{grid-template-columns:1fr} }
+
+/* lista de componentes */
+.componentes{list-style:none; margin:0; padding:0; border-top:1px solid var(--line)}
+.componentes li{display:flex; gap:20px; padding:16px 2px; border-bottom:1px solid var(--line)}
+.componentes .qtd{
+  flex:0 0 44px; text-align:right; font-family:var(--head); font-weight:900;
+  font-size:21px; line-height:1.25; color:var(--gold);
+}
+.componentes strong{display:block; font-weight:500; font-size:16px; color:var(--paper); line-height:1.35}
+.componentes small{display:block; font-size:13.5px; color:var(--muted); margin-top:3px; line-height:1.55}
+@media(max-width:560px){
+  .componentes li{gap:14px}
+  .componentes .qtd{flex-basis:30px; font-size:18px}
+  .componentes strong{font-size:15px}
+}
 
 .gallery{display:grid; grid-template-columns:repeat(2,1fr); gap:14px}
 @media(min-width:860px){ .gallery{grid-template-columns:repeat(3,1fr)} }
@@ -441,17 +469,36 @@ footer b i{color:var(--paper); font-style:normal; font-size:.6em; vertical-align
       <p class="eyebrow">03 — <b>Ficha técnica</b></p>
       <h2>O que tem <i>por dentro</i>.</h2>
     </div>
-    <dl class="specs reveal">
-      <div class="spec"><dt>Comprimento</dt><dd>55 cm<small>a caixa inteira, de ponta a ponta</small></dd></div>
-      <div class="spec"><dt>Altura total</dt><dd>29 cm<small>incluindo o painel do cenário</small></dd></div>
-      <div class="spec"><dt>Pista</dt><dd>45 cm<small>duas raias guiadas, largada e chegada quadriculadas</small></dd></div>
-      <div class="spec"><dt>Cérebro</dt><dd>Arduino<small>lê os botões e comanda os motores</small></dd></div>
-      <div class="spec"><dt>Acesso</dt><dd>Traseira<small>abertura com cortina de feltro vermelho para chegar em todo o sistema</small></dd></div>
-      <div class="spec"><dt>Driver</dt><dd>L9110<small>módulo ponte H que aciona os dois motores</small></dd></div>
-      <div class="spec"><dt>Motores</dt><dd>2 × TT<small>os motorzinhos amarelos clássicos de Arduino</small></dd></div>
-      <div class="spec"><dt>Controles</dt><dd>3 botões<small>dois arcade com microswitch e lâmpada, mais o restart redondo na lateral direita</small></dd></div>
-      <div class="spec"><dt>Sinalização</dt><dd>LED + som<small>um LED por jogador e um buzzer na lateral esquerda</small></dd></div>
+    <h3 class="bloco-titulo reveal">Medidas</h3>
+    <dl class="medidas reveal">
+      <div>
+        <dt>Comprimento</dt>
+        <dd>55<span>cm</span></dd>
+        <small>a caixa inteira, de ponta a ponta</small>
+      </div>
+      <div>
+        <dt>Altura total</dt>
+        <dd>29<span>cm</span></dd>
+        <small>do tampo da mesa ao topo do painel do cenário</small>
+      </div>
+      <div>
+        <dt>Pista</dt>
+        <dd>45<span>cm</span></dd>
+        <small>da largada à chegada, em duas raias guiadas</small>
+      </div>
     </dl>
+
+    <h3 class="bloco-titulo reveal">Componentes eletrônicos</h3>
+    <ul class="componentes reveal">
+      <li><span class="qtd">1</span><div><strong>Arduino</strong><small>o cérebro: lê os botões, conta os cliques e decide quem venceu</small></div></li>
+      <li><span class="qtd">1</span><div><strong>Protoboard</strong><small>onde a fiação toda se encontra, sem precisar soldar nada</small></div></li>
+      <li><span class="qtd">1</span><div><strong>Ponte H — módulo L9110</strong><small>recebe a ordem do Arduino e entrega força aos dois motores</small></div></li>
+      <li><span class="qtd">2</span><div><strong>Motores amarelos</strong><small>os TT clássicos, um por raia, que puxam os carrinhos pela linha</small></div></li>
+      <li><span class="qtd">3</span><div><strong>Botões de fliperama</strong><small>um para cada jogador e o terceiro, na lateral direita, de restart</small></div></li>
+      <li><span class="qtd">2</span><div><strong>LEDs</strong><small>um verde e um vermelho: a luz que aponta o vencedor</small></div></li>
+      <li><span class="qtd">2</span><div><strong>Pilhas recarregáveis</strong><small>a fonte de alimentação do módulo dos motores</small></div></li>
+      <li><span class="qtd">—</span><div><strong>Jumpers</strong><small>os fios que ligam tudo isso por dentro da caixa</small></div></li>
+    </ul>
   </div>
 </section>
 
