@@ -277,6 +277,15 @@ body.entrou .race         {transition-delay:.78s}
 .race .play{display:none; gap:12px; align-items:stretch}
 .race.live .play{display:flex}
 .race.live .start{display:none}
+.race .restart{
+  margin-top:9px; width:100%; border:1px solid var(--line); border-radius:10px; padding:9px;
+  background:rgba(12,12,16,.72); color:var(--muted); cursor:pointer;
+  font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+  -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none;
+}
+.race .restart:hover{color:var(--paper); border-color:#3a3a47}
+.race .restart:active{transform:scale(.98)}
+body.toque .race .restart .k{display:none}
 .lane-ui{
   flex:1; background:rgba(10,10,14,.84); border:1px solid var(--line); border-radius:15px;
   padding:11px 13px; backdrop-filter:blur(10px);
@@ -322,7 +331,9 @@ body.toque .dica .t{display:inline}
   .lane-ui .nm{font-size:8.5px; margin-bottom:7px}
   .lane-ui .bar{height:8px}
   .lane-ui button{margin-top:9px; padding:23px 6px; font-size:13px; letter-spacing:.1em; border-radius:12px}
-  .hint{bottom:78px}          /* acima do botão de corrida, que também fica embaixo */
+  /* no celular o bloco da corrida ocupa a parte de baixo inteira; a dica é
+     reposicionada logo acima dele por JS (posicionarDica) */
+  .hint{max-width:84vw}
   .vctl{right:10px; bottom:auto; top:50%; transform:translateY(-50%)}
   .vctl button{width:34px; height:34px; border-radius:10px; font-size:14px}
   .viewer.correndo .vctl{opacity:0; pointer-events:none}
@@ -508,6 +519,7 @@ footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20p
         <button data-p="1">Acelerar</button>
       </div>
     </div>
+    <button class="restart" id="restartBtn" title="Mesmo efeito do botão preto da lateral direita">↻ Restart<b class="k"> · espaço</b></button>
   </div>
 
   <div class="vctl">
@@ -1055,9 +1067,22 @@ controls.target.set(0, 11.5, 0);
 /* O OrbitControls grava touch-action:none direto no estilo do canvas, o que
    prende a rolagem no celular e vence o CSS. Devolvemos pan-y: deslizar para
    cima e para baixo rola a página, deslizar de lado gira o protótipo.        */
+/* No celular o bloco da corrida cresce e encosta na dica. Em vez de chutar uma
+   altura no CSS, medimos onde o bloco começa e encostamos a dica logo acima. */
+function posicionarDica(){
+  const dicaEl = document.getElementById('hint');
+  const bloco = document.getElementById('race');
+  if(!dicaEl || !bloco) return;
+  if(innerWidth > 720){ dicaEl.style.bottom = ''; return; }
+  const palco = document.querySelector('.viewer').getBoundingClientRect();
+  const r = bloco.getBoundingClientRect();
+  dicaEl.style.bottom = Math.max(16, Math.round(palco.bottom - r.top + 10)) + 'px';
+}
 function liberarRolagem(){ canvas.style.touchAction = 'pan-y'; }
 liberarRolagem();
-addEventListener('resize', liberarRolagem);
+addEventListener('resize', ()=>{ liberarRolagem(); posicionarDica(); });
+addEventListener('load', posicionarDica);
+setTimeout(posicionarDica, 300);
 
 /* ---- a roda do mouse rola a PÁGINA; só com Ctrl (ou pinça no trackpad) dá zoom ----
    Captura no elemento pai: sem Ctrl o evento nem chega ao canvas, então o
@@ -1389,14 +1414,16 @@ const leds = [ led(-7.5, 0x3ee874), led(7.5, 0xff3b4d) ];
 }
 
 /* ---------- lateral DIREITA: botão de restart + logo ---------- */
+let domoRestart = null, pressRestart = 0;
+const RESTART_X = W/2+0.4;
 {
   // botão redondo preto
   const aro = new THREE.Mesh(new THREE.CylinderGeometry(1.75,1.75,0.55,26), mPlast);
   aro.rotation.z = Math.PI/2; aro.position.set(W/2+0.2, 7.4, 2.5); add(aro);
-  const domo = new THREE.Mesh(
+  domoRestart = new THREE.Mesh(
     new THREE.SphereGeometry(1.45,26,16,0,Math.PI*2,0,Math.PI/2),
     new THREE.MeshStandardMaterial({color:0x17171c, roughness:0.26, metalness:0.12}));
-  domo.rotation.z = -Math.PI/2; domo.position.set(W/2+0.4, 7.4, 2.5); add(domo);
+  domoRestart.rotation.z = -Math.PI/2; domoRestart.position.set(RESTART_X, 7.4, 2.5); add(domoRestart);
 }
 /* ---------- caixinha lateral: guarda as cabeças dos vilões ---------- */
 {
@@ -1573,8 +1600,8 @@ const PONTOS = [
   { id:'restart', tag:'Botão de restart', pos:new THREE.Vector3(29.6,7.4,2.5), n:new THREE.Vector3(1,0.25,0.25),
     cam:new THREE.Vector3(56,18,27), tgt:new THREE.Vector3(20,7.5,3),
     eyebrow:'Reinício', title:'O preto da lateral direita',
-    lead:'Na lateral direita fica um botão redondo preto: é o restart. Ele apaga o LED do vencedor, devolve os carrinhos à largada e deixa a próxima dupla já pronta para jogar — sem precisar desligar nada.',
-    list:[['Onde','Lateral direita, à frente da logo'],['Formato','Botão redondo preto, diferente dos arcade'],['O que faz','Zera a partida e devolve os carrinhos'],['Por quê','Numa feira, a fila não pode parar']] },
+    lead:'Na lateral direita fica um botão redondo preto: é o restart. É ele que começa a contagem da corrida e, no fim, apaga o LED do vencedor e devolve os carrinhos à largada — a próxima dupla já pega tudo pronto, sem desligar nada.',
+    list:[['Onde','Lateral direita, à frente da logo'],['Formato','Botão redondo preto, diferente dos arcade'],['O que faz','Começa a contagem e, depois, devolve os carrinhos à largada'],['Aqui no site','A barra de espaço faz as duas coisas'],['Por quê','Numa feira, a fila não pode parar']] },
 
   { id:'sistema', tag:'Cortina da traseira', pos:new THREE.Vector3(0,7.5,-14.2), n:new THREE.Vector3(0,0.25,-1),
     cam:new THREE.Vector3(2,24,-42), tgt:new THREE.Vector3(0,5.5,-6), cortina:true, caixa:CAIXA_VAO,
@@ -1686,6 +1713,8 @@ const somContagem = n => n>0 ? nota(TOM_PI, 0, 0.150, 'square', 0.15, true)
                              : nota(TOM_JA, 0, 0.800, 'square', 0.15, true);
 
 function somAcelera(prog){ nota(170 + prog*280, 0, 0.045, 'square', 0.05); }
+/* restart: dois bipes curtos descendo, como quem zera a máquina */
+function somRestart(){ nota(880, 0, 0.07, 'square', 0.1, true); nota(520, 0.09, 0.11, 'square', 0.1, true); }
 
 /* --- música de vitória: as mesmas notas e durações do código do Arduino --- */
 const PAUSA = 0;
@@ -1731,16 +1760,36 @@ function resetCorrida(){
   document.querySelector('.viewer').classList.remove('correndo');
   fills.forEach(f=>f.style.width='0%');
   leds.forEach(l=>{ l.mat.emissiveIntensity=0.5; l.lamp.intensity=0; });
-  cars.forEach((c)=>{ c.g.position.x = RACE_X0; c.glow.intensity=0; c.dotMat.emissiveIntensity=1.5; });
+  setTimeout(posicionarDica, 60);
+  cars.forEach((c)=>{ c.g.position.x = RACE_X0; c.glow.intensity=0; c.dotMat.emissiveIntensity=0.55; });
 }
-document.getElementById('startBtn').onclick = ()=>{
-  audio();                               // destrava o som no clique do usuário
+/* O botão preto da lateral direita faz as duas coisas, como no protótipo:
+   com tudo parado ele começa a contagem; com a corrida andando ou terminada
+   ele devolve os carrinhos à largada. A tecla espaço é esse botão. */
+function restart(){
+  pressRestart = 1;                      // afunda o botão preto no 3D
+  const andando = race.live || race.done || contagem !== null
+               || cars[0].g.position.x > RACE_X0 + 0.01
+               || cars[1].g.position.x > RACE_X0 + 0.01;
+  if(andando){
+    somRestart();
+    if(contagem){ clearInterval(contagem); contagem = null; cdEl.classList.remove('on'); }
+    resetCorrida();
+    dica('Restart: carrinhos de volta à largada');
+  }else{
+    largar();
+  }
+}
+let contagem = null;
+function largar(){
+  audio();                               // destrava o som no gesto do usuário
+  if(contagem) return;
   resetCorrida();
   voarPara(new THREE.Vector3(0,40,46), new THREE.Vector3(0,13,-3), 850, 'ajustar');
   document.getElementById('hint').classList.add('gone');
   let n = 3;
   cdEl.classList.add('on'); cdEl.textContent = n; somContagem(n);
-  const tick = setInterval(()=>{
+  contagem = setInterval(()=>{
     n--;
     if(n>0){
       cdEl.textContent = n; somContagem(n);
@@ -1748,12 +1797,15 @@ document.getElementById('startBtn').onclick = ()=>{
     }
     else if(n===0){ cdEl.textContent='JÁ!'; somContagem(0); }
     else {
-      clearInterval(tick); cdEl.classList.remove('on');
+      clearInterval(contagem); contagem = null; cdEl.classList.remove('on');
       race.live = true; raceEl.classList.add('live');
       document.querySelector('.viewer').classList.add('correndo');
+      setTimeout(posicionarDica, 60);
     }
   }, 750);
-};
+}
+document.getElementById('startBtn').onclick = largar;
+document.getElementById('restartBtn').onclick = ()=>{ audio(); restart(); };
 function acelerar(i){
   if(!race.live || race.done) return;
   race.taps[i] = Math.min(META, race.taps[i]+1);
@@ -1815,6 +1867,12 @@ addEventListener('keydown', e=>{
   const k = e.key.toLowerCase();
   if(k==='a') acelerar(0);
   if(k==='l') acelerar(1);
+  if(e.code==='Space' || k===' '){      // o botão preto da lateral direita
+    const alvo = e.target;
+    if(alvo && (alvo.tagName==='BUTTON' || alvo.tagName==='INPUT' || alvo.tagName==='TEXTAREA')) return;
+    e.preventDefault();
+    audio(); restart();
+  }
 });
 
 /* ============================================================
@@ -1882,6 +1940,11 @@ function loop(now){
     m.position.y = BTN_Y - btnPress[i]*0.42;
     m.material.emissiveIntensity = 0.9 + btnPress[i]*1.8;
   });
+  // o botão preto do restart afunda para dentro da lateral direita
+  if(domoRestart){
+    pressRestart = Math.max(0, pressRestart - dt*7);
+    domoRestart.position.x = RESTART_X - pressRestart*0.5;
+  }
 
   controls.update();
   updateMarks();
