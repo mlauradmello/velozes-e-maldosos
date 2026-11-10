@@ -1178,15 +1178,19 @@ function matFace(tex){ return new THREE.MeshStandardMaterial({map:tex, roughness
 const model = new THREE.Group(); scene.add(model);
 function add(mesh, cast=true, rec=true){ mesh.castShadow=cast; mesh.receiveShadow=rec; model.add(mesh); return mesh; }
 
+/* A traseira dos dois blocos não é desenhada: o vão de manutenção é um buraco
+   de verdade, e quem fecha o resto do fundo são os montantes, a soleira e a
+   verga lá embaixo. Sem isso a caixa ficava maciça e o miolo, invisível. */
+const semFundo = new THREE.MeshBasicMaterial({visible:false});
 /* ---------- corpo: bloco inferior (deck + letreiro) ---------- */
 {
-  const faces = [mPreto,mPreto,mFosco,mFosco,matFace(texTitulo()),mPreto];
+  const faces = [mPreto,mPreto,mFosco,mFosco,matFace(texTitulo()),semFundo];
   const b = new THREE.Mesh(new THREE.BoxGeometry(W,H_BASE,D), faces);
   b.position.set(0,H_BASE/2,0); add(b);
 }
 /* ---------- corpo: bloco superior (pista + lápides) ---------- */
 {
-  const faces = [mPreto,mPreto,mFosco,mFosco,matFace(texLapides()),mPreto];
+  const faces = [mPreto,mPreto,mFosco,mFosco,matFace(texLapides()),semFundo];
   const u = new THREE.Mesh(new THREE.BoxGeometry(W,H_UPPER,D_UPPER), faces);
   u.position.set(0, H_BASE+H_UPPER/2, TRACK_Z0 + D_UPPER/2); add(u);
 }
