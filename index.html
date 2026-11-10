@@ -56,17 +56,21 @@ nav a:hover{color:var(--paper)}
 /* ---------- viewer ---------- */
 .viewer{
   scroll-margin-top:72px;
-  position:relative; height:min(84svh,760px); min-height:470px; overflow:hidden;
+  position:relative; overflow:hidden;
+  height:min(calc(100svh - 63px), 940px); min-height:600px;
+  display:flex; flex-direction:column;
+  padding:min(4vh,28px) 0 20px;
   background:
     radial-gradient(90% 70% at 50% 18%, #1d1626 0%, #110f19 42%, #07070b 100%);
   border-bottom:1px solid var(--line);
 }
-.viewer::after{
-  content:""; position:absolute; inset:0; pointer-events:none;
+.palco::after{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:1;
   background:radial-gradient(60% 55% at 50% 42%, transparent 55%, rgba(0,0,0,.55) 100%);
 }
 /* pan-y: deslizar para cima e para baixo rola a página;
    deslizar de lado gira o modelo. A página nunca fica presa aqui. */
+.palco{position:relative; flex:1 1 auto; min-height:230px}
 #scene{position:absolute; inset:0; display:block; width:100%; height:100%; touch-action:pan-y}
 
 .toast{
@@ -80,8 +84,8 @@ nav a:hover{color:var(--paper)}
 #marks{position:absolute; inset:0; pointer-events:none; z-index:3}
 
 .hero-title{
-  position:absolute; left:0; right:0; top:min(5vh,34px); text-align:center; z-index:2; pointer-events:none;
-  padding-inline:16px;
+  flex:0 0 auto; text-align:center; pointer-events:none;
+  padding:0 16px min(2.4vh,16px);
 }
 .hero-title h1{
   font-family:var(--display); font-weight:400;
@@ -235,8 +239,7 @@ body.entrou .race         {transition-delay:.78s}
 
 /* ---------- race HUD ---------- */
 .race{
-  position:absolute; left:50%; transform:translateX(-50%); bottom:54px; z-index:5;
-  width:min(620px,92vw); text-align:center;
+  flex:0 0 auto; margin:14px auto 0; width:min(620px,92vw); text-align:center;
 }
 .race .start{
   font-family:var(--mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase;
@@ -325,14 +328,12 @@ body.toque .dica .t{display:inline}
 .winner strong{display:block; font-family:var(--head); font-weight:900; font-size:clamp(34px,6vw,58px); margin-top:6px}
 /* celular: alvos grandes para o polegar e os controles de zoom fora do caminho */
 @media(max-width:600px){
-  .race{bottom:16px; width:95vw}
+  .race{width:95vw}
   .play{gap:9px}
   .lane-ui{padding:10px 11px 11px; border-radius:16px}
   .lane-ui .nm{font-size:8.5px; margin-bottom:7px}
   .lane-ui .bar{height:8px}
   .lane-ui button{margin-top:9px; padding:23px 6px; font-size:13px; letter-spacing:.1em; border-radius:12px}
-  /* no celular o bloco da corrida ocupa a parte de baixo inteira; a dica é
-     reposicionada logo acima dele por JS (posicionarDica) */
   .hint{max-width:84vw}
   .vctl{right:10px; bottom:auto; top:50%; transform:translateY(-50%)}
   .vctl button{width:34px; height:34px; border-radius:10px; font-size:14px}
@@ -480,17 +481,27 @@ footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20p
 </div></nav>
 
 <header class="viewer" id="proto">
-  <canvas id="scene"></canvas>
-  <div id="marks"></div>
-
   <div class="hero-title">
     <h1>VELOZES<em>E</em>MALDOSOS</h1>
     <p>Jogo de corrida entre vilões!</p>
   </div>
 
-  <div class="toast" id="toast"></div>
-  <div class="countdown" id="cd"></div>
-  <div class="winner" id="win"><span id="winSub">Chegou primeiro</span><strong id="winName"></strong></div>
+  <div class="palco" id="palco">
+    <canvas id="scene"></canvas>
+    <div id="marks"></div>
+    <div class="toast" id="toast"></div>
+    <div class="countdown" id="cd"></div>
+    <div class="winner" id="win"><span id="winSub">Chegou primeiro</span><strong id="winName"></strong></div>
+
+    <div class="vctl">
+      <button id="zin" title="Aproximar" aria-label="Aproximar">+</button>
+      <button id="zout" title="Afastar" aria-label="Afastar">−</button>
+      <button id="reset" title="Vista inicial" aria-label="Vista inicial">⟲</button>
+      <button id="som" title="Som" aria-label="Desligar som">🔊</button>
+    </div>
+
+    <p class="hint escondido" id="hint">Arraste para girar · toque nos pontos rosa</p>
+  </div>
 
   <div class="race" id="race">
     <div class="pilotos">
@@ -522,14 +533,6 @@ footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20p
     <button class="restart" id="restartBtn" title="Mesmo efeito do botão preto da lateral direita">↻ Restart<b class="k"> · espaço</b></button>
   </div>
 
-  <div class="vctl">
-    <button id="zin" title="Aproximar" aria-label="Aproximar">+</button>
-    <button id="zout" title="Afastar" aria-label="Afastar">−</button>
-    <button id="reset" title="Vista inicial" aria-label="Vista inicial">⟲</button>
-    <button id="som" title="Som" aria-label="Desligar som">🔊</button>
-  </div>
-
-  <p class="hint escondido" id="hint">Arraste para girar · toque nos pontos rosa</p>
 
   <div id="loader">
     <div class="pano esq"></div>
@@ -1067,16 +1070,11 @@ controls.target.set(0, 11.5, 0);
 /* O OrbitControls grava touch-action:none direto no estilo do canvas, o que
    prende a rolagem no celular e vence o CSS. Devolvemos pan-y: deslizar para
    cima e para baixo rola a página, deslizar de lado gira o protótipo.        */
-/* No celular o bloco da corrida cresce e encosta na dica. Em vez de chutar uma
-   altura no CSS, medimos onde o bloco começa e encostamos a dica logo acima. */
+/* O bloco da corrida agora fica abaixo do palco, então a dica volta a morar
+   no rodapé do próprio palco e não precisa de conta nenhuma. */
 function posicionarDica(){
   const dicaEl = document.getElementById('hint');
-  const bloco = document.getElementById('race');
-  if(!dicaEl || !bloco) return;
-  if(innerWidth > 720){ dicaEl.style.bottom = ''; return; }
-  const palco = document.querySelector('.viewer').getBoundingClientRect();
-  const r = bloco.getBoundingClientRect();
-  dicaEl.style.bottom = Math.max(16, Math.round(palco.bottom - r.top + 10)) + 'px';
+  if(dicaEl) dicaEl.style.bottom = '';
 }
 function liberarRolagem(){ canvas.style.touchAction = 'pan-y'; }
 liberarRolagem();
@@ -1658,14 +1656,7 @@ addEventListener('keydown', e=>{ if(e.key==='Escape') fechar(); });
    de baixo) e o bloco da corrida, que fica sempre por cima do rodapé do palco.
    O bloco muda de altura quando a corrida começa, então guardamos a altura do
    estado maior — assim o protótipo nunca volta a ficar escondido no meio. */
-let vaoCorrida = 0;          // do rodapé do canvas até o topo do bloco
-function medirCorrida(){
-  const el = document.getElementById('race');
-  if(!el || el.classList.contains('live')) return;
-  const cv = renderer.domElement.getBoundingClientRect();
-  const r = el.getBoundingClientRect();
-  if(r.height > 10 && cv.height > 10) vaoCorrida = Math.max(0, cv.bottom - r.top) + 12;
-}
+function medirCorrida(){}   // o bloco da corrida não cobre mais o palco
 function faixaVisivel(cv){
   let limite = cv.bottom;
   // O painel entra deslizando: a posição dele no instante do clique ainda é a
@@ -1673,7 +1664,6 @@ function faixaVisivel(cv){
   // com a própria altura) em vez de medir onde ele está agora.
   if(panel.classList.contains('open') && innerWidth <= 720)
     limite = Math.min(limite, innerHeight - panel.offsetHeight);
-  if(vaoCorrida > 10) limite = Math.min(limite, cv.bottom - vaoCorrida);
   return Math.max(80, limite - cv.top);
 }
 function vistaAcimaDoPainel(cam, tgt, caixa){
