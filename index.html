@@ -581,7 +581,7 @@ footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20p
       </div>
       <div class="step reveal" data-n="3">
         <h3>O carrinho avança</h3>
-        <p>O motor puxa o carrinho pela raia. Quanto mais rápido o clique, mais contínuo o avanço.</p>
+        <p>O motor gira a polia, e o fio puxa o carrinho pela raia. Quanto mais rápido o clique, mais contínuo o avanço.</p>
       </div>
       <div class="step reveal" data-n="4">
         <h3>O LED decide</h3>
@@ -589,7 +589,7 @@ footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20p
       </div>
       <div class="step reveal" data-n="5">
         <h3>E se travar?</h3>
-        <p>Levanta a cortina vermelha da traseira: Arduino, motores e fiação ficam todos ali, à mão.</p>
+        <p>Levanta a cortina vermelha da traseira: polia, motores, Arduino e fiação ficam todos ali, à mão.</p>
       </div>
     </div>
   </div>
@@ -1198,35 +1198,60 @@ let cortina, luzVao1, luzVao2, luzVao3;
   casco.position.set(0, 6.3, TRACK_Z0 + (D_UPPER-1.0)/2); casco.receiveShadow = true;
   model.add(casco);
 
-  // --- o sistema por dentro ---
+  // --- o sistema por dentro: a polia de cada raia + a eletrônica embaixo ---
   const mLenho = new THREE.MeshStandardMaterial({color:0xb08b56, roughness:0.92});
   const mPlaca = new THREE.MeshStandardMaterial({color:0x123b48, roughness:0.55, metalness:0.2});
   const mDriver= new THREE.MeshStandardMaterial({color:0x7d1222, roughness:0.6});
   const mAmarelo=new THREE.MeshStandardMaterial({color:0xe2b411, roughness:0.5});
   const mPilha = new THREE.MeshStandardMaterial({color:0xe8e4da, roughness:0.6});
+  const mMetal = new THREE.MeshStandardMaterial({color:0x9aa2ac, roughness:0.35, metalness:0.75});
+  const mFio   = new THREE.MeshStandardMaterial({color:0xe7e0cf, roughness:0.85});
+  const mBranca= new THREE.MeshStandardMaterial({color:0xf1efe9, roughness:0.7});
 
   function peca(geo, mat, x,y,z){ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z);
     m.castShadow=true; m.receiveShadow=true; model.add(m); return m; }
 
-  peca(new THREE.BoxGeometry(42,0.6,11), mLenho, 0, 2.5, -7);        // tablado
-  peca(new THREE.BoxGeometry(0.9,5.6,0.9), mLenho, 3.5, 5.4, -7.6);  // sarrafo vertical
-  peca(new THREE.BoxGeometry(0.9,5.6,0.9), mLenho, -8, 5.4, -8.2);
+  peca(new THREE.BoxGeometry(50,0.6,14), mLenho, 0, 2.3, -5);        // tablado de fundo
 
-  // dois motores TT amarelos
-  [-16.5,-11.8].forEach((mx,i)=>{
-    peca(new THREE.BoxGeometry(3.4,2.3,1.5), mAmarelo, mx, 4.3, -8.4-i*0.4);
-    peca(new THREE.BoxGeometry(1.7,1.9,2.1), mPlast,   mx+2.2, 4.1, -8.4-i*0.4);
-    const eixo=peca(new THREE.CylinderGeometry(0.16,0.16,2.6,10), mPlast, mx+2.2, 4.1, -7.1-i*0.4);
-    eixo.rotation.x=Math.PI/2;
+  // ---- polia: duas roldanas por raia e o fio que puxa o carrinho ----
+  const POLIA_Y = 6.4, PX = 21.5;
+  [LANE_A, LANE_B].forEach((lz, i)=>{
+    [-PX, PX].forEach((px, ponta)=>{
+      // suporte de madeira que levanta a roldana do tablado
+      peca(new THREE.BoxGeometry(1.5,4.4,2.8), mLenho, px, POLIA_Y-2.9, lz);
+      // roldana: corpo + dois flanges, eixo em pé (vista de cima mostra o círculo)
+      peca(new THREE.CylinderGeometry(1.55,1.55,0.95,22), mMetal, px, POLIA_Y, lz);
+      [0.62,-0.62].forEach(fy=> peca(new THREE.CylinderGeometry(1.95,1.95,0.3,22), mMetal, px, POLIA_Y+fy, lz));
+      peca(new THREE.CylinderGeometry(0.22,0.22,2.2,10), mMetal, px, POLIA_Y, lz);   // eixo
+      // só a ponta esquerda é motorizada: motor TT em pé, embaixo da roldana
+      if(ponta===0){
+        peca(new THREE.BoxGeometry(2.4,3.2,1.6), mAmarelo, px, 4.0, lz);
+        peca(new THREE.BoxGeometry(1.9,1.6,2.2), mPlast,   px, 5.6, lz);
+      }
+    });
+    // os dois ramos do fio, de uma roldana à outra
+    [-1.72, 1.72].forEach(off=>{
+      const f = peca(new THREE.CylinderGeometry(0.11,0.11,PX*2,8), mFio, 0, POLIA_Y, lz+off);
+      f.rotation.z = Math.PI/2;
+    });
+    // haste presa no fio: é ela que sobe e arrasta o carrinho na pista
+    const hx = -6 + i*8;
+    peca(new THREE.BoxGeometry(0.42,6.0,0.42), mMetal, hx, POLIA_Y+3.0, lz-1.72);
+    peca(new THREE.BoxGeometry(1.1,0.8,1.1), mPlast,  hx, POLIA_Y+0.3, lz-1.72);
   });
-  // Arduino + módulo driver + pilhas
-  peca(new THREE.BoxGeometry(5.8,0.35,3.8), mPlaca, 1.5, 3.0, -6.4);
+
+  // ---- eletrônica, apoiada no tablado, embaixo das polias ----
+  peca(new THREE.BoxGeometry(5.8,0.35,3.8), mPlaca, -2.5, 3.0, -8.4);      // Arduino
   const ledPlaca=peca(new THREE.CylinderGeometry(0.17,0.17,0.3,8),
-    new THREE.MeshStandardMaterial({color:0x44ff77, emissive:0x33ee66, emissiveIntensity:2.4}), 3.6, 3.3, -5.4);
+    new THREE.MeshStandardMaterial({color:0x44ff77, emissive:0x33ee66, emissiveIntensity:2.4}), -0.4, 3.3, -7.4);
   ledPlaca.rotation.x=Math.PI/2; ledPlaca.rotation.z=Math.PI/2;
-  peca(new THREE.BoxGeometry(2.9,0.32,2.4), mDriver, 8.6, 2.95, -6.0);
-  peca(new THREE.BoxGeometry(5.4,1.6,2.8), mPilha, 15.5, 3.5, -6.6);
-  peca(new THREE.BoxGeometry(5.5,0.5,2.9), new THREE.MeshStandardMaterial({color:0x2b53c0, roughness:0.6}), 15.5, 4.0, -6.6);
+  peca(new THREE.BoxGeometry(2.9,0.32,2.4), mDriver, 5.0, 2.95, -8.0);     // ponte H L9110
+  peca(new THREE.BoxGeometry(8.4,0.9,5.4), mBranca, -12.5, 3.1, -7.8);     // protoboard
+  peca(new THREE.BoxGeometry(8.0,0.12,0.9), new THREE.MeshStandardMaterial({color:0xd8d4cb, roughness:0.8}),
+       -12.5, 3.56, -7.8);                                                  // canaleta central
+  peca(new THREE.BoxGeometry(5.4,1.6,2.8), mPilha, 12.5, 3.4, -8.2);       // suporte de pilhas
+  peca(new THREE.BoxGeometry(5.5,0.5,2.9), new THREE.MeshStandardMaterial({color:0x2b53c0, roughness:0.6}),
+       12.5, 3.9, -8.2);
 
   // fiação
   function cabo(pts, cor, r=0.115){
@@ -1235,11 +1260,12 @@ let cortina, luzVao1, luzVao2, luzVao3;
       new THREE.MeshStandardMaterial({color:cor, roughness:0.65}));
     m.castShadow=true; model.add(m); return m;
   }
-  cabo([[-14,4.6,-7.6],[-9,5.6,-6.2],[-4,4.4,-5.6],[0,3.4,-6.0]], 0xd4232e);
-  cabo([[-14,4.2,-7.2],[-8,5.0,-5.4],[-3,3.9,-5.2],[1,3.3,-5.6]], 0xe9e6e0);
-  cabo([[4,3.3,-6.2],[7,4.6,-5.2],[10,3.6,-5.6],[13,3.9,-6.2]],   0x7a4bd0);
-  cabo([[4,3.2,-6.8],[8,4.1,-7.4],[12,3.6,-7.0],[15,4.3,-6.6]],   0x1b1b20);
-  cabo([[9,3.2,-5.6],[12,4.8,-4.8],[16,4.6,-5.2],[19,3.6,-6.4]],  0xe08a1e);
+  cabo([[-20.5,4.0,-3.4],[-14,4.6,-6.0],[-8,4.0,-7.4],[-4,3.3,-8.0]], 0xd4232e);
+  cabo([[-20.5,3.6,0.6],[-13,4.2,-5.0],[-7,3.8,-7.0],[-3,3.2,-7.6]],  0xe9e6e0);
+  cabo([[0.5,3.3,-8.2],[2.5,4.4,-7.2],[4,3.6,-7.6],[5,3.2,-8.0]],     0x7a4bd0);
+  cabo([[6,3.2,-8.4],[8,4.1,-9.0],[11,3.6,-8.6],[12.5,3.8,-8.2]],     0x1b1b20);
+  cabo([[-9,3.4,-7.6],[-6,4.6,-6.6],[-3,4.2,-7.0],[-1,3.4,-7.8]],     0xe08a1e);
+  cabo([[-16,3.6,-7.0],[-14,4.8,-6.2],[-11,4.4,-6.6],[-9,3.6,-7.2]],  0x2f8f3c);
 
   // --- cortina de feltro vermelho ---
   const CW=45.6, CH=9.2;
@@ -1521,10 +1547,10 @@ const PONTOS = [
     list:[['Onde','Lateral direita, à frente da logo'],['Formato','Botão redondo preto, diferente dos arcade'],['O que faz','Zera a partida e devolve os carrinhos'],['Por quê','Numa feira, a fila não pode parar']] },
 
   { id:'sistema', tag:'Cortina da traseira', pos:new THREE.Vector3(0,7.5,-14.2), n:new THREE.Vector3(0,0.25,-1),
-    cam:new THREE.Vector3(6,20,-52), tgt:new THREE.Vector3(0,6.5,-9), cortina:true,
+    cam:new THREE.Vector3(3,13,-46), tgt:new THREE.Vector3(0,6.0,-8), cortina:true, raio:23,
     eyebrow:'Manutenção', title:'Atrás da cortina vermelha',
-    lead:'A traseira tem uma abertura do tamanho da caixa, escondida por uma cortina de feltro vermelho. Levanta a cortina e dá pra chegar em tudo: o Arduino, o módulo dos motores, os motores TT e a fiação inteira — sem desmontar nada.',
-    list:[['Abertura','Vão na traseira, da largura da caixa'],['Fechamento','Cortina de feltro vermelho em um varão'],['Acesso','Arduino, driver, motores, pilhas e fiação'],['Por quê','Dá pra consertar e remontar no meio da feira']] },
+    lead:'A traseira tem uma abertura do tamanho da caixa, escondida por uma cortina de feltro vermelho. Levanta a cortina e aparece o sistema inteiro: a polia que puxa cada carrinho, os dois motores TT, o Arduino, o módulo L9110, as pilhas e a fiação — tudo à mão, sem desmontar nada.',
+    list:[['Abertura','Vão na traseira, da largura da caixa'],['Fechamento','Cortina de feltro vermelho em um varão'],['Mecanismo','Polia e fio puxando o carrinho em cada raia'],['Acesso','Arduino, driver, motores, pilhas e fiação']] },
 ];
 
 const marks = document.getElementById('marks');
@@ -1544,8 +1570,8 @@ function abrir(p, el){
   document.getElementById('pLead').textContent = p.lead;
   document.getElementById('pList').innerHTML = p.list.map(([k,v])=>`<li><b>${k}</b><span>${v}</span></li>`).join('');
   panel.classList.add('open'); scrim.classList.add('on');
-  const v = vistaAcimaDoPainel(p.cam, p.tgt);
-  voarPara(v.cam, v.tgt);
+  const v = vistaAcimaDoPainel(p.cam, p.tgt, p.raio || 17);
+  voarPara(v.cam, v.tgt, 950, 'nenhum');
   cortinaAlvo = p.cortina ? 0.16 : 1;      // levanta a cortina só no ponto da traseira
   document.getElementById('hint').classList.add('gone');
 }
@@ -1558,14 +1584,26 @@ document.getElementById('panelClose').onclick = fechar;
 scrim.onclick = fechar;
 addEventListener('keydown', e=>{ if(e.key==='Escape') fechar(); });
 
-/* No celular o painel sobe de baixo e cobre o meio da tela. Descemos a mira
-   da câmera para o assunto aparecer na faixa que continua visível em cima. */
-function vistaAcimaDoPainel(cam, tgt){
-  if(!ehToque) return {cam, tgt};
-  const d = cam.distanceTo(tgt);
-  const alturaVisivel = 2 * d * Math.tan(camera.fov * Math.PI / 360);
-  const desloc = alturaVisivel * 0.22;
-  return { cam: cam.clone().setY(cam.y - desloc), tgt: tgt.clone().setY(tgt.y - desloc) };
+/* Em tela estreita o painel vira folha de baixo e cobre o meio do canvas.
+   Medimos a faixa que sobra em cima e enquadramos o assunto DENTRO dela:
+   recuamos o quanto for preciso para ele caber e descemos a mira, senão o
+   ponto de interesse fica exatamente atrás do painel. */
+function vistaAcimaDoPainel(cam, tgt, raio){
+  const cv = renderer.domElement.getBoundingClientRect();
+  const pr = panel.getBoundingClientRect();
+  const folhaDeBaixo = pr.width > cv.width*0.9 && pr.top > cv.top;
+  const limite = folhaDeBaixo ? Math.min(pr.top, cv.bottom) : cv.bottom;
+  const faixa = Math.max(80, limite - cv.top);
+  const fr = Math.min(1, faixa / cv.height);          // quanto do canvas sobra
+  const tv = Math.tan(camera.fov*Math.PI/360);
+  const th = tv * camera.aspect;
+  const dir = cam.clone().sub(tgt);
+  const d = Math.min(controls.maxDistance,
+              Math.max(dir.length(), raio/th, (raio*0.45)/(tv*fr)));
+  const pos = tgt.clone().add(dir.setLength(d));
+  if(fr > 0.92) return {cam:pos, tgt:tgt.clone()};
+  const desloc = 2*d*tv * (0.5 - fr/2);               // leva a mira ao meio da faixa
+  return { cam: pos.setY(pos.y - desloc), tgt: tgt.clone().setY(tgt.y - desloc) };
 }
 
 /* ---------- câmera animada ---------- */
