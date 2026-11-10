@@ -225,7 +225,7 @@ body.entrou .race         {transition-delay:.78s}
 }
 #panel li b{color:var(--paper); font-weight:500; flex:0 0 108px; font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; padding-top:3px}
 @media(max-width:720px){
-  #panel{top:auto; bottom:0; height:auto; max-height:62svh; width:100%; border-left:0; border-top:1px solid var(--line);
+  #panel{top:auto; bottom:0; height:auto; max-height:52svh; width:100%; border-left:0; border-top:1px solid var(--line);
     border-radius:20px 20px 0 0; transform:translateY(103%); padding:26px 22px 34px}
   #panel li{flex-direction:column; gap:3px}
   #panel li b{flex:none}
@@ -1085,16 +1085,19 @@ const HOME = {pos:new THREE.Vector3(41,31,63), tgt:new THREE.Vector3(0,11.5,0)};
 /* ---- enquadramento: telas estreitas precisam da câmera mais longe ---- */
 const ASPECTO_REF = 1.6;                  // proporção para a qual as vistas foram ajustadas
 // caixa que envolve tudo: corpo, cenário, caixinha à esquerda, botão à direita, cortina atrás
-const CAIXA_MIN = new THREE.Vector3(-34.5, 0, -14.6);
-const CAIXA_MAX = new THREE.Vector3( 29.5, 29.2, 12.6);
+const CAIXA_GERAL = {min:new THREE.Vector3(-34.5, 0, -14.6), max:new THREE.Vector3(29.5, 29.2, 12.6)};
+// o miolo da traseira: é o que precisa caber quando a cortina sobe
+const CAIXA_VAO   = {min:new THREE.Vector3(-24.5, 1.8, -13), max:new THREE.Vector3(24.5, 10.5, 2)};
 
 /* Distância exata para o protótipo INTEIRO caber, dada a direção da câmera.
    Projeta os 8 cantos da caixa nos eixos da câmera: numa vista em três quartos
    o canto da frente fica bem mais perto que o centro, e era isso que cortava. */
-function distanciaParaCaber(dirUnit, tgt, aspecto){
+function distanciaParaCaber(dirUnit, tgt, aspecto, caixa, fracaoV=1){
   const vfov = camera.fov*Math.PI/180;
   const hfov = 2*Math.atan(Math.tan(vfov/2)*aspecto);
-  const ty = Math.tan(vfov/2), tx = Math.tan(hfov/2);
+  const ty = Math.tan(vfov/2)*fracaoV, tx = Math.tan(hfov/2);
+  const CAIXA_MIN = caixa ? caixa.min : CAIXA_GERAL.min;
+  const CAIXA_MAX = caixa ? caixa.max : CAIXA_GERAL.max;
   const fwd = dirUnit.clone().negate();                 // da câmera para o alvo
   const aux = (Math.abs(fwd.x) < 1e-6 && Math.abs(fwd.z) < 1e-6)
     ? new THREE.Vector3(0,0,1) : new THREE.Vector3(0,1,0);
@@ -1547,7 +1550,7 @@ const PONTOS = [
     list:[['Onde','Lateral direita, à frente da logo'],['Formato','Botão redondo preto, diferente dos arcade'],['O que faz','Zera a partida e devolve os carrinhos'],['Por quê','Numa feira, a fila não pode parar']] },
 
   { id:'sistema', tag:'Cortina da traseira', pos:new THREE.Vector3(0,7.5,-14.2), n:new THREE.Vector3(0,0.25,-1),
-    cam:new THREE.Vector3(3,13,-46), tgt:new THREE.Vector3(0,6.0,-8), cortina:true, raio:23,
+    cam:new THREE.Vector3(2,24,-42), tgt:new THREE.Vector3(0,5.5,-6), cortina:true, caixa:CAIXA_VAO,
     eyebrow:'Manutenção', title:'Atrás da cortina vermelha',
     lead:'A traseira tem uma abertura do tamanho da caixa, escondida por uma cortina de feltro vermelho. Levanta a cortina e aparece o sistema inteiro: a polia que puxa cada carrinho, os dois motores TT, o Arduino, o módulo L9110, as pilhas e a fiação — tudo à mão, sem desmontar nada.',
     list:[['Abertura','Vão na traseira, da largura da caixa'],['Fechamento','Cortina de feltro vermelho em um varão'],['Mecanismo','Polia e fio puxando o carrinho em cada raia'],['Acesso','Arduino, driver, motores, pilhas e fiação']] },
@@ -1570,7 +1573,10 @@ function abrir(p, el){
   document.getElementById('pLead').textContent = p.lead;
   document.getElementById('pList').innerHTML = p.list.map(([k,v])=>`<li><b>${k}</b><span>${v}</span></li>`).join('');
   panel.classList.add('open'); scrim.classList.add('on');
-  const v = vistaAcimaDoPainel(p.cam, p.tgt, p.raio || 17);
+  const r = p.raio || 13;
+  const v = vistaAcimaDoPainel(p.cam, p.tgt, p.caixa || {
+    min:new THREE.Vector3(p.tgt.x-r, p.tgt.y-r*0.6, p.tgt.z-r),
+    max:new THREE.Vector3(p.tgt.x+r, p.tgt.y+r*0.6, p.tgt.z+r) });
   voarPara(v.cam, v.tgt, 950, 'nenhum');
   cortinaAlvo = p.cortina ? 0.16 : 1;      // levanta a cortina só no ponto da traseira
   document.getElementById('hint').classList.add('gone');
@@ -1588,7 +1594,7 @@ addEventListener('keydown', e=>{ if(e.key==='Escape') fechar(); });
    Medimos a faixa que sobra em cima e enquadramos o assunto DENTRO dela:
    recuamos o quanto for preciso para ele caber e descemos a mira, senão o
    ponto de interesse fica exatamente atrás do painel. */
-function vistaAcimaDoPainel(cam, tgt, raio){
+function vistaAcimaDoPainel(cam, tgt, caixa){
   const cv = renderer.domElement.getBoundingClientRect();
   const pr = panel.getBoundingClientRect();
   const folhaDeBaixo = pr.width > cv.width*0.9 && pr.top > cv.top;
@@ -1596,13 +1602,14 @@ function vistaAcimaDoPainel(cam, tgt, raio){
   const faixa = Math.max(80, limite - cv.top);
   const fr = Math.min(1, faixa / cv.height);          // quanto do canvas sobra
   const tv = Math.tan(camera.fov*Math.PI/360);
-  const th = tv * camera.aspect;
   const dir = cam.clone().sub(tgt);
-  const d = Math.min(controls.maxDistance,
-              Math.max(dir.length(), raio/th, (raio*0.45)/(tv*fr)));
+  const precisa = distanciaParaCaber(dir.clone().normalize(), tgt, camera.aspect, caixa, fr);
+  const d = Math.min(controls.maxDistance, Math.max(dir.length(), precisa));
   const pos = tgt.clone().add(dir.setLength(d));
   if(fr > 0.92) return {cam:pos, tgt:tgt.clone()};
-  const desloc = 2*d*tv * (0.5 - fr/2);               // leva a mira ao meio da faixa
+  // desce câmera e mira juntas: a direção do olhar não muda, o assunto é que
+  // sobe na tela. Com piso: abaixo do chão a vista ficaria por baixo da maquete.
+  const desloc = Math.min(2*d*tv * (0.5 - fr/2), Math.max(0, pos.y - 3));
   return { cam: pos.setY(pos.y - desloc), tgt: tgt.clone().setY(tgt.y - desloc) };
 }
 
