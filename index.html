@@ -1080,9 +1080,11 @@ function posicionarDica(){
 }
 function liberarRolagem(){ canvas.style.touchAction = 'pan-y'; }
 liberarRolagem();
-addEventListener('resize', ()=>{ liberarRolagem(); posicionarDica(); });
-addEventListener('load', posicionarDica);
-setTimeout(posicionarDica, 300);
+function ajustarPalco(){ liberarRolagem(); medirCorrida(); posicionarDica(); }
+addEventListener('resize', ajustarPalco);
+addEventListener('load', ajustarPalco);
+setTimeout(ajustarPalco, 300);
+setTimeout(ajustarPalco, 1200);
 
 /* ---- a roda do mouse rola a PÁGINA; só com Ctrl (ou pinça no trackpad) dá zoom ----
    Captura no elemento pai: sem Ctrl o evento nem chega ao canvas, então o
@@ -1648,12 +1650,31 @@ addEventListener('keydown', e=>{ if(e.key==='Escape') fechar(); });
    Medimos a faixa que sobra em cima e enquadramos o assunto DENTRO dela:
    recuamos o quanto for preciso para ele caber e descemos a mira, senão o
    ponto de interesse fica exatamente atrás do painel. */
+/* Quanto do canvas continua à vista: descontamos o painel (quando vira folha
+   de baixo) e o bloco da corrida, que fica sempre por cima do rodapé do palco.
+   O bloco muda de altura quando a corrida começa, então guardamos a altura do
+   estado maior — assim o protótipo nunca volta a ficar escondido no meio. */
+let vaoCorrida = 0;          // do rodapé do canvas até o topo do bloco
+function medirCorrida(){
+  const el = document.getElementById('race');
+  if(!el || el.classList.contains('live')) return;
+  const cv = renderer.domElement.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  if(r.height > 10 && cv.height > 10) vaoCorrida = Math.max(0, cv.bottom - r.top) + 12;
+}
+function faixaVisivel(cv){
+  let limite = cv.bottom;
+  // O painel entra deslizando: a posição dele no instante do clique ainda é a
+  // de fora da tela. Por isso calculamos onde ele VAI parar (preso embaixo,
+  // com a própria altura) em vez de medir onde ele está agora.
+  if(panel.classList.contains('open') && innerWidth <= 720)
+    limite = Math.min(limite, innerHeight - panel.offsetHeight);
+  if(vaoCorrida > 10) limite = Math.min(limite, cv.bottom - vaoCorrida);
+  return Math.max(80, limite - cv.top);
+}
 function vistaAcimaDoPainel(cam, tgt, caixa){
   const cv = renderer.domElement.getBoundingClientRect();
-  const pr = panel.getBoundingClientRect();
-  const folhaDeBaixo = pr.width > cv.width*0.9 && pr.top > cv.top;
-  const limite = folhaDeBaixo ? Math.min(pr.top, cv.bottom) : cv.bottom;
-  const faixa = Math.max(80, limite - cv.top);
+  const faixa = faixaVisivel(cv);
   const fr = Math.min(1, faixa / cv.height);          // quanto do canvas sobra
   const tv = Math.tan(camera.fov*Math.PI/360);
   const dir = cam.clone().sub(tgt);
@@ -1667,6 +1688,12 @@ function vistaAcimaDoPainel(cam, tgt, caixa){
   return { cam: pos.setY(pos.y - desloc), tgt: tgt.clone().setY(tgt.y - desloc) };
 }
 
+/* vista geral: o protótipo inteiro, dentro do que sobra do palco */
+function irParaCasa(dur=950){
+  medirCorrida();
+  const v = vistaAcimaDoPainel(HOME.pos, HOME.tgt);
+  voarPara(v.cam, v.tgt, dur, 'nenhum');
+}
 /* ---------- câmera animada ---------- */
 let fly = null;
 function voarPara(pos, tgt, dur=950, modo='escalar'){
@@ -1675,7 +1702,7 @@ function voarPara(pos, tgt, dur=950, modo='escalar'){
 }
 const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
 
-document.getElementById('reset').onclick = ()=>{ voarPara(HOME.pos, HOME.tgt, 950, 'ajustar'); fechar(); };
+document.getElementById('reset').onclick = ()=>{ fechar(); irParaCasa(950); };
 document.getElementById('zin').onclick  = ()=>zoom(0.82);
 document.getElementById('zout').onclick = ()=>zoom(1.22);
 function zoom(f){
@@ -1760,7 +1787,7 @@ function resetCorrida(){
   document.querySelector('.viewer').classList.remove('correndo');
   fills.forEach(f=>f.style.width='0%');
   leds.forEach(l=>{ l.mat.emissiveIntensity=0.5; l.lamp.intensity=0; });
-  setTimeout(posicionarDica, 60);
+  setTimeout(()=>{ medirCorrida(); posicionarDica(); }, 60);
   cars.forEach((c)=>{ c.g.position.x = RACE_X0; c.glow.intensity=0; c.dotMat.emissiveIntensity=0.55; });
 }
 /* O botão preto da lateral direita faz as duas coisas, como no protótipo:
@@ -1785,7 +1812,8 @@ function largar(){
   audio();                               // destrava o som no gesto do usuário
   if(contagem) return;
   resetCorrida();
-  voarPara(new THREE.Vector3(0,40,46), new THREE.Vector3(0,13,-3), 850, 'ajustar');
+  { const v = vistaAcimaDoPainel(new THREE.Vector3(0,40,46), new THREE.Vector3(0,13,-3));
+    voarPara(v.cam, v.tgt, 850, 'nenhum'); }
   document.getElementById('hint').classList.add('gone');
   let n = 3;
   cdEl.classList.add('on'); cdEl.textContent = n; somContagem(n);
@@ -1800,7 +1828,7 @@ function largar(){
       clearInterval(contagem); contagem = null; cdEl.classList.remove('on');
       race.live = true; raceEl.classList.add('live');
       document.querySelector('.viewer').classList.add('correndo');
-      setTimeout(posicionarDica, 60);
+      setTimeout(posicionarDica, 60);   // o bloco encolhe, a dica desce
     }
   }, 750);
 }
@@ -1898,6 +1926,7 @@ function resize(){
   renderer.setSize(r.width, r.height, false);
   camera.aspect = r.width/r.height; camera.updateProjectionMatrix();
   // reajusta a distância quando a janela muda de proporção (girar o celular, por exemplo)
+  medirCorrida();
   const antes = fator; atualizarFator();
   if(!fly && Math.abs(fator-antes) > 0.001){
     const dir = camera.position.clone().sub(controls.target);
@@ -1963,7 +1992,7 @@ function abrirCortina(){
   palcoEl.classList.add('gone');
   document.body.classList.add('entrou');
   // o voo começa junto com a cortina: a pessoa vê o protótipo "se montando"
-  voarPara(HOME.pos, HOME.tgt, devagar ? 400 : 2400, 'ajustar');
+  irParaCasa(devagar ? 400 : 2400);
   setTimeout(()=>document.getElementById('hint').classList.remove('escondido'), devagar ? 400 : 2300);
   setTimeout(()=>document.getElementById('hint').classList.add('gone'), 13000);
 }
