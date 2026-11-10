@@ -1349,9 +1349,9 @@ let cortina, luzVao1, luzVao2, luzVao3;
 
   // Luz dentro do vão: o cenário e os refletores vêm todos da frente, então o
   // miolo ficaria preto. Estas acendem conforme a cortina sobe.
-  luzVao1 = new THREE.PointLight(0xfff2e0, 0, 34, 2); luzVao1.position.set(2, 8.6, -5.5);
-  luzVao2 = new THREE.PointLight(0xffe8cc, 0, 30, 2); luzVao2.position.set(-15, 7.6, -7.0);
-  luzVao3 = new THREE.PointLight(0xfff0dd, 0, 26, 2); luzVao3.position.set(15, 7.8, -5.0);
+  luzVao1 = new THREE.PointLight(0xfff2e0, 0, 46, 2); luzVao1.position.set(2, 8.2, -6.5);
+  luzVao2 = new THREE.PointLight(0xffe8cc, 0, 42, 2); luzVao2.position.set(-16, 7.6, -7.5);
+  luzVao3 = new THREE.PointLight(0xfff0dd, 0, 42, 2); luzVao3.position.set(16, 7.6, -7.5);
   model.add(luzVao1, luzVao2, luzVao3);
 }
 let cortinaAlvo = 1;   // 1 = fechada · 0.16 = levantada
@@ -1959,9 +1959,9 @@ function loop(now){
   cortina.scale.set(1, sc, Math.max(0.12, sc));
   // a luz do vão acompanha a abertura: fechada = apagada, aberta = sistema à mostra
   const aberta = Math.max(0, (1 - sc) / 0.84);
-  luzVao1.intensity = aberta * 95;
-  luzVao2.intensity = aberta * 70;
-  luzVao3.intensity = aberta * 58;
+  luzVao1.intensity = aberta * 520;
+  luzVao2.intensity = aberta * 380;
+  luzVao3.intensity = aberta * 380;
 
   // botões afundam quando clicados
   btnMeshes.forEach((m,i)=>{
