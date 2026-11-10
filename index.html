@@ -245,8 +245,10 @@ body.entrou .race         {transition-delay:.78s}
 }
 .race .start:hover{transform:translateY(-2px); box-shadow:0 14px 40px rgba(239,27,125,.5)}
 /* escolha de piloto, antes da largada */
-.pilotos{display:flex; gap:12px; margin-bottom:12px}
-.race.live .pilotos{display:none}
+.pilotos{display:flex; gap:12px; margin-bottom:8px}
+.obs{margin:0 0 12px; font-family:var(--mono); font-size:9.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--muted); text-align:center}
+.race.live .pilotos, .race.live .obs{display:none}
 .esc{
   flex:1; background:rgba(10,10,14,.84); border:1px solid var(--line);
   border-radius:14px; padding:9px 10px 10px; backdrop-filter:blur(10px); text-align:left;
@@ -492,6 +494,7 @@ footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20p
         <button data-p="1" data-i="1">Dona Ruína</button>
       </div>
     </div>
+    <p class="obs">Personagens meramente ilustrativos</p>
     <button class="start" id="startBtn">▶ Apostar uma corrida</button>
     <div class="play">
       <div class="lane-ui g">
@@ -1196,79 +1199,103 @@ let cortina, luzVao1, luzVao2, luzVao3;
   verga.position.set(0, (AB_Y1+TRACK_Y)/2, BACK_Z); add(verga);
 
   // casco interno (faces viradas pra dentro), pra não vazar o modelo
-  const mMDF = new THREE.MeshStandardMaterial({color:0x7d5f3d, roughness:0.95, side:THREE.BackSide});
+  const mMDF = new THREE.MeshStandardMaterial({color:0xbb966a, roughness:0.96, side:THREE.BackSide});
   const casco = new THREE.Mesh(new THREE.BoxGeometry(W-1.2, 12.2, D_UPPER-1.0), mMDF);
   casco.position.set(0, 6.3, TRACK_Z0 + (D_UPPER-1.0)/2); casco.receiveShadow = true;
   model.add(casco);
 
-  // --- o sistema por dentro: a polia de cada raia + a eletrônica embaixo ---
-  const mLenho = new THREE.MeshStandardMaterial({color:0xb08b56, roughness:0.92});
-  const mPlaca = new THREE.MeshStandardMaterial({color:0x123b48, roughness:0.55, metalness:0.2});
-  const mDriver= new THREE.MeshStandardMaterial({color:0x7d1222, roughness:0.6});
-  const mAmarelo=new THREE.MeshStandardMaterial({color:0xe2b411, roughness:0.5});
-  const mPilha = new THREE.MeshStandardMaterial({color:0xe8e4da, roughness:0.6});
-  const mMetal = new THREE.MeshStandardMaterial({color:0x9aa2ac, roughness:0.35, metalness:0.75});
-  const mFio   = new THREE.MeshStandardMaterial({color:0xe7e0cf, roughness:0.85});
-  const mBranca= new THREE.MeshStandardMaterial({color:0xf1efe9, roughness:0.7});
+  // --- o sistema por dentro, como no protótipo: roldana amarela em cada
+  // ponta da raia, dois fios pretos correndo de ponta a ponta, motores na
+  // direita e a eletrônica solta no fundo de MDF cru ---
+  const mLenho = new THREE.MeshStandardMaterial({color:0xcdab7e, roughness:0.94});
+  const mVareta= new THREE.MeshStandardMaterial({color:0xd8bd91, roughness:0.85});
+  const mPlaca = new THREE.MeshStandardMaterial({color:0x17466b, roughness:0.5, metalness:0.25});
+  const mVerdePl=new THREE.MeshStandardMaterial({color:0x15673a, roughness:0.5, metalness:0.2});
+  const mAmarelo=new THREE.MeshStandardMaterial({color:0xf0c21a, roughness:0.45});
+  const mPreto = new THREE.MeshStandardMaterial({color:0x1b1b1f, roughness:0.55});
+  const mAco   = new THREE.MeshStandardMaterial({color:0xa9afb6, roughness:0.3, metalness:0.8});
+  const mFio   = new THREE.MeshStandardMaterial({color:0x16161a, roughness:0.75});
+  const mPilha = new THREE.MeshStandardMaterial({color:0xf2f0ea, roughness:0.55});
 
   function peca(geo, mat, x,y,z){ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z);
     m.castShadow=true; m.receiveShadow=true; model.add(m); return m; }
 
-  peca(new THREE.BoxGeometry(50,0.6,14), mLenho, 0, 2.3, -5);        // tablado de fundo
+  peca(new THREE.BoxGeometry(50,0.6,13), mLenho, 0, 2.3, -5.5);       // fundo de MDF
 
-  // ---- polia: duas roldanas por raia e o fio que puxa o carrinho ----
-  const POLIA_Y = 6.4, PX = 21.5;
+  // ---- a polia de cada raia ----
+  const POLIA_Y = 7.2, PX = 21.5, RP = 1.75;
   [LANE_A, LANE_B].forEach((lz, i)=>{
     [-PX, PX].forEach((px, ponta)=>{
-      // suporte de madeira que levanta a roldana do tablado
-      peca(new THREE.BoxGeometry(1.5,4.4,2.8), mLenho, px, POLIA_Y-2.9, lz);
-      // roldana: corpo + dois flanges, eixo em pé (vista de cima mostra o círculo)
-      peca(new THREE.CylinderGeometry(1.55,1.55,0.95,22), mMetal, px, POLIA_Y, lz);
-      [0.62,-0.62].forEach(fy=> peca(new THREE.CylinderGeometry(1.95,1.95,0.3,22), mMetal, px, POLIA_Y+fy, lz));
-      peca(new THREE.CylinderGeometry(0.22,0.22,2.2,10), mMetal, px, POLIA_Y, lz);   // eixo
-      // só a ponta esquerda é motorizada: motor TT em pé, embaixo da roldana
-      if(ponta===0){
-        peca(new THREE.BoxGeometry(2.4,3.2,1.6), mAmarelo, px, 4.0, lz);
-        peca(new THREE.BoxGeometry(1.9,1.6,2.2), mPlast,   px, 5.6, lz);
+      // chapinha de MDF cortada a laser que segura o eixo
+      peca(new THREE.BoxGeometry(4.6,6.4,0.5), mLenho, px, POLIA_Y-0.8, lz+1.3);
+      // roldana amarela, eixo apontando para a abertura
+      const rol = peca(new THREE.CylinderGeometry(RP,RP,0.9,24), mAmarelo, px, POLIA_Y, lz);
+      rol.rotation.x = Math.PI/2;
+      const cubo = peca(new THREE.CylinderGeometry(0.55,0.55,1.3,14), mAco, px, POLIA_Y, lz);
+      cubo.rotation.x = Math.PI/2;
+      // a ponta direita é a motorizada: motor TT deitado atrás da roldana
+      if(ponta===1){
+        const corpo = peca(new THREE.CylinderGeometry(1.5,1.5,3.4,16), mPreto, px+0.6, POLIA_Y, lz+2.6);
+        corpo.rotation.x = Math.PI/2;
+        peca(new THREE.BoxGeometry(2.3,2.0,1.6), mAmarelo, px+0.6, POLIA_Y, lz+0.9);
       }
     });
-    // os dois ramos do fio, de uma roldana à outra
-    [-1.72, 1.72].forEach(off=>{
-      const f = peca(new THREE.CylinderGeometry(0.11,0.11,PX*2,8), mFio, 0, POLIA_Y, lz+off);
+    // os dois ramos do fio: por cima e por baixo das roldanas
+    [RP, -RP].forEach(off=>{
+      const f = peca(new THREE.CylinderGeometry(0.09,0.09,PX*2,8), mFio, 0, POLIA_Y+off, lz);
       f.rotation.z = Math.PI/2;
     });
-    // haste presa no fio: é ela que sobe e arrasta o carrinho na pista
-    const hx = -6 + i*8;
-    peca(new THREE.BoxGeometry(0.42,6.0,0.42), mMetal, hx, POLIA_Y+3.0, lz-1.72);
-    peca(new THREE.BoxGeometry(1.1,0.8,1.1), mPlast,  hx, POLIA_Y+0.3, lz-1.72);
+    // o nó que prende o fio e a vareta que sobe até o carrinho
+    const hx = -7 + i*9;
+    peca(new THREE.BoxGeometry(0.9,0.7,0.9), mPreto, hx, POLIA_Y+RP, lz);
+    const vara = peca(new THREE.CylinderGeometry(0.17,0.17,4.2,8), mVareta, hx, POLIA_Y+RP+2.1, lz);
+    vara.rotation.z = 0;
   });
 
-  // ---- eletrônica, apoiada no tablado, embaixo das polias ----
-  peca(new THREE.BoxGeometry(5.8,0.35,3.8), mPlaca, -2.5, 3.0, -8.4);      // Arduino
-  const ledPlaca=peca(new THREE.CylinderGeometry(0.17,0.17,0.3,8),
-    new THREE.MeshStandardMaterial({color:0x44ff77, emissive:0x33ee66, emissiveIntensity:2.4}), -0.4, 3.3, -7.4);
-  ledPlaca.rotation.x=Math.PI/2; ledPlaca.rotation.z=Math.PI/2;
-  peca(new THREE.BoxGeometry(2.9,0.32,2.4), mDriver, 5.0, 2.95, -8.0);     // ponte H L9110
-  peca(new THREE.BoxGeometry(8.4,0.9,5.4), mBranca, -12.5, 3.1, -7.8);     // protoboard
-  peca(new THREE.BoxGeometry(8.0,0.12,0.9), new THREE.MeshStandardMaterial({color:0xd8d4cb, roughness:0.8}),
-       -12.5, 3.56, -7.8);                                                  // canaleta central
-  peca(new THREE.BoxGeometry(5.4,1.6,2.8), mPilha, 12.5, 3.4, -8.2);       // suporte de pilhas
-  peca(new THREE.BoxGeometry(5.5,0.5,2.9), new THREE.MeshStandardMaterial({color:0x2b53c0, roughness:0.6}),
-       12.5, 3.9, -8.2);
+  // varetas de madeira que escoram o tabuleiro de cima
+  [-13.5, 4.5, 17].forEach(vx=>{
+    const v = peca(new THREE.CylinderGeometry(0.2,0.2,9.4,8), mVareta, vx, 7.3, -9.4);
+    v.rotation.z = 0; return v;
+  });
 
-  // fiação
-  function cabo(pts, cor, r=0.115){
+  // ---- eletrônica solta no fundo ----
+  // Arduino Uno: placa azul, conector USB prateado e jaque preto de energia
+  peca(new THREE.BoxGeometry(6.8,0.35,5.3), mPlaca, -5, 2.8, -8.6);
+  peca(new THREE.BoxGeometry(1.6,1.1,1.2), mAco,   -7.6, 3.2, -10.4);
+  peca(new THREE.BoxGeometry(1.0,1.0,1.3), mPreto, -7.8, 3.1, -8.4);
+  // módulo com LED verde aceso
+  peca(new THREE.BoxGeometry(3.4,0.32,2.4), mVerdePl, 1.6, 2.8, -8.8);
+  const ledPlaca=peca(new THREE.SphereGeometry(0.22,10,8),
+    new THREE.MeshStandardMaterial({color:0x6bff8f, emissive:0x3dff6e, emissiveIntensity:3.4}), 2.6, 3.1, -9.5);
+  // pilhas recarregáveis deitadas
+  [[11,-8.6],[11,-7.0]].forEach(([bx,bz])=>{
+    const pl = peca(new THREE.CylinderGeometry(0.9,0.9,6.5,14), mPilha, bx, 3.1, bz);
+    pl.rotation.z = Math.PI/2;
+    const faixa = peca(new THREE.CylinderGeometry(0.92,0.92,2.2,14),
+      new THREE.MeshStandardMaterial({color:0xcf2033, roughness:0.6}), bx-1.3, 3.1, bz);
+    faixa.rotation.z = Math.PI/2;
+  });
+  // protoboard branca
+  peca(new THREE.BoxGeometry(8.2,0.9,5.2), mPilha, 19.5, 3.0, -8.0);
+  peca(new THREE.BoxGeometry(7.8,0.1,0.8), new THREE.MeshStandardMaterial({color:0xdedad1, roughness:0.8}),
+       19.5, 3.46, -8.0);
+
+  // fiação: jumpers coloridos subindo das placas
+  function cabo(pts, cor, r=0.1){
     const curva=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(...p)));
     const m=new THREE.Mesh(new THREE.TubeGeometry(curva,30,r,6,false),
-      new THREE.MeshStandardMaterial({color:cor, roughness:0.65}));
+      new THREE.MeshStandardMaterial({color:cor, roughness:0.6}));
     m.castShadow=true; model.add(m); return m;
   }
-  cabo([[-20.5,4.0,-3.4],[-14,4.6,-6.0],[-8,4.0,-7.4],[-4,3.3,-8.0]], 0xd4232e);
-  cabo([[-20.5,3.6,0.6],[-13,4.2,-5.0],[-7,3.8,-7.0],[-3,3.2,-7.6]],  0xe9e6e0);
-  cabo([[0.5,3.3,-8.2],[2.5,4.4,-7.2],[4,3.6,-7.6],[5,3.2,-8.0]],     0x7a4bd0);
-  cabo([[6,3.2,-8.4],[8,4.1,-9.0],[11,3.6,-8.6],[12.5,3.8,-8.2]],     0x1b1b20);
-  cabo([[-9,3.4,-7.6],[-6,4.6,-6.6],[-3,4.2,-7.0],[-1,3.4,-7.8]],     0xe08a1e);
-  cabo([[-16,3.6,-7.0],[-14,4.8,-6.2],[-11,4.4,-6.6],[-9,3.6,-7.2]],  0x2f8f3c);
+  cabo([[-3,3.0,-8.8],[-1,5.0,-7.6],[2,4.6,-8.2],[4,3.1,-8.8]],      0xe8e4dc);
+  cabo([[-3.4,3.0,-9.4],[-0.5,5.6,-8.4],[3,5.0,-9.0],[5.5,3.2,-9.4]],0xcf2033);
+  cabo([[-4,3.0,-7.6],[-1,4.8,-6.6],[2.5,4.4,-7.2],[5,3.1,-7.8]],    0x8457cf);
+  cabo([[2,3.0,-8.4],[5,5.0,-7.6],[8,4.6,-8.2],[10.5,3.3,-8.6]],     0xe8891c);
+  cabo([[2.4,3.0,-9.2],[6,4.4,-9.6],[9,4.0,-9.2],[11,3.3,-8.8]],     0xf0d02a);
+  cabo([[12.5,3.2,-8.2],[15,4.6,-7.4],[18,4.2,-7.8],[19.5,3.3,-8.2]],0xe8e4dc);
+  cabo([[13,3.2,-9.0],[16,4.2,-9.4],[19,3.8,-9.0],[20.5,3.2,-8.6]],  0x1b1b20);
+  cabo([[-20,6.0,-2.2],[-14,4.8,-5.0],[-9,3.8,-7.4],[-6,3.1,-8.4]],  0xcf2033);
+  cabo([[20,6.0,1.4],[15,4.6,-4.0],[9,3.8,-7.0],[6,3.1,-8.2]],       0x1b1b20);
 
   // --- cortina de feltro vermelho ---
   const CW=45.6, CH=9.2;
@@ -1464,7 +1491,6 @@ function carro(dotHex, tipos){
   const asaD = new THREE.Mesh(new THREE.BoxGeometry(1.4,0.22,2.6), mCarro); asaD.position.set(4.4,1.05,0); g.add(asaD);
   // listra dourada
   const listra = new THREE.Mesh(new THREE.BoxGeometry(7.0,0.08,0.45), mOuro); listra.position.set(0.3,1.17,0); g.add(listra);
-  const aro1 = new THREE.Mesh(new THREE.TorusGeometry(1.15,0.12,8,22), mOuro); aro1.position.set(-0.2,1.78,1.07); g.add(aro1);
   // rodas
   const roda = new THREE.CylinderGeometry(1.15,1.15,1.3,20);
   [[-3.0,1.95],[-3.0,-1.95],[2.9,1.85],[2.9,-1.85]].forEach(([x,z])=>{
@@ -1479,7 +1505,7 @@ function carro(dotHex, tipos){
   const pilotos = tipos.map((t,k)=>{ const cab=piloto(t); cab.visible = (k===0); encaixe.add(cab); return cab; });
   // bolinha de identificação no bico: verde é o jogador 1, vermelho é o jogador 2
   const dotMat = new THREE.MeshStandardMaterial({
-    color:dotHex, emissive:dotHex, emissiveIntensity:1.5, roughness:0.22, metalness:0
+    color:dotHex, emissive:dotHex, emissiveIntensity:0.55, roughness:0.3, metalness:0
   });
   const bolinha = new THREE.Mesh(new THREE.SphereGeometry(0.66,20,16), dotMat);
   bolinha.position.set(3.9, 1.98, 0); g.add(bolinha);
@@ -1492,8 +1518,9 @@ function carro(dotHex, tipos){
   model.add(g);
   return {g, glow, dotMat, pilotos};
 }
-const cars = [ carro(0x3ee874, ['condessa','corvo']),
-               carro(0xff3b4d, ['carrasco','ruina']) ];
+// bolinhas em tom fechado: verde-garrafa e vermelho-escuro
+const cars = [ carro(0x158c3f, ['condessa','corvo']),
+               carro(0x9c1420, ['carrasco','ruina']) ];
 function trocarPiloto(jogador, k){
   cars[jogador].pilotos.forEach((cab,j)=>{ cab.visible = (j===k); });
 }
