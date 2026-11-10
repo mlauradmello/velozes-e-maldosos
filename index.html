@@ -1977,6 +1977,10 @@ function loop(now){
 
   controls.update();
   updateMarks();
+  // ponto de inspeção para conferir o miolo sem precisar adivinhar
+  window.__vm = {THREE, scene, camera, controls, model, cortina,
+    luz:()=>[luzVao1.intensity, luzVao2.intensity, luzVao3.intensity],
+    sc:()=>cortina.scale.y, alvo:()=>cortinaAlvo};
   renderer.render(scene, camera);
 }
 
