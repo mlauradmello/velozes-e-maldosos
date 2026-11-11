@@ -4,6 +4,10 @@
 //  CESAR School - Design
 //  Anna Olimpia | Leticia Sabino | Lucas Regis
 //  Maria Laura de Mello | Pamella Capistrano
+//
+//  (c) 2026 Equipe Velozes e Maldosos. Todos os direitos reservados.
+//  Este codigo esta publico para leitura e estudo. Copiar, modificar,
+//  distribuir ou usar comercialmente so com autorizacao da equipe.
 // ===========================================================
 
 // ===== LIGACOES: qual fio vai em qual pino do Arduino =====
