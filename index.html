@@ -459,6 +459,37 @@ footer .wrap{display:grid; grid-template-columns:1fr 1fr; gap:clamp(32px,5vw,64p
 
 footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20px; border-top:1px solid var(--line)}
 .pe-fim small{font-family:var(--mono); font-size:9px; letter-spacing:.08em; color:#4f4858; line-height:1.9}
+/* ---------- seção do código ---------- */
+.cod-pontos{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:28px}
+@media(max-width:800px){ .cod-pontos{grid-template-columns:1fr} }
+.cod-pontos article{border:1px solid var(--line); border-radius:14px; padding:18px 18px 20px; background:rgba(14,14,19,.5)}
+.cod-pontos h4{margin:0 0 8px; font-size:14px; letter-spacing:.01em; color:var(--paper)}
+.cod-pontos p{margin:0; font-size:13.5px; line-height:1.65; color:var(--muted)}
+
+.cod-caixa{border:1px solid var(--line); border-radius:16px; overflow:hidden; background:#0a0a0e}
+.cod-caixa header{
+  display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  padding:12px 16px; border-bottom:1px solid var(--line); background:rgba(18,18,24,.8);
+}
+.cod-caixa .arq{font-family:var(--mono); font-size:11px; letter-spacing:.1em; color:var(--pink)}
+.cod-acoes{display:flex; gap:8px; flex-wrap:wrap}
+.cod-acoes button, .cod-acoes a{
+  font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase;
+  border:1px solid var(--line); border-radius:8px; padding:7px 11px; background:transparent;
+  color:var(--muted); cursor:pointer; text-decoration:none; transition:.18s;
+}
+.cod-acoes button:hover, .cod-acoes a:hover{color:var(--paper); border-color:#3a3a47}
+#codFonte{
+  margin:0; padding:18px 16px; max-height:62vh; overflow:auto;
+  font-family:var(--mono); font-size:12px; line-height:1.75; color:#d6d2dd;
+  tab-size:2; white-space:pre;
+}
+#codFonte .c{color:#5f5a6b; font-style:italic}   /* comentários */
+#codFonte .k{color:#ef1b7d}                       /* palavras do Arduino */
+#codFonte .n{color:#67c9f5}                       /* números */
+#codFonte .s{color:#8fd98f}                       /* textos entre aspas */
+@media(max-width:600px){ #codFonte{font-size:11px; max-height:56vh} }
+
 .reveal{opacity:0; transform:translateY(22px); transition:opacity .8s ease, transform .8s cubic-bezier(.22,1,.36,1)}
 .reveal.in{opacity:1; transform:none}
 @media(prefers-reduced-motion:reduce){ .reveal{opacity:1;transform:none} html{scroll-behavior:auto} }
@@ -476,6 +507,7 @@ footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20p
     <li><a href="#ideia">A ideia</a></li>
     <li><a href="#funciona">Como funciona</a></li>
     <li><a href="#ficha">Ficha técnica</a></li>
+    <li><a href="#codigo">O código</a></li>
     <li><a href="#fotos">Fotos</a></li>
   </ul>
 </div></nav>
@@ -653,10 +685,38 @@ footer .pe-fim{display:block; margin-top:clamp(32px,4.5vw,48px); padding-top:20p
   </div>
 </section>
 
+<section id="codigo">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="eyebrow">04 — <b>O código</b></p>
+      <h2>O que o Arduino <i>está pensando</i>.</h2>
+      <p>Um arquivo só, comentado em português, do jeito que foi gravado na placa. Ele cuida de tudo: lê os botões sem contar clique repetido, transforma cada clique em um tanto de giro do motor, decide quem venceu pela luz, toca a contagem e a música, e faz os carrinhos voltarem sozinhos para a largada.</p>
+    </div>
+
+    <div class="cod-pontos reveal">
+      <article><h4>Cada clique vira giro</h4><p>O clique não move o carrinho direto: ele soma tempo de motor ligado. Clicar mais rápido emenda um giro no outro, e o carrinho anda contínuo em vez de aos trancos.</p></article>
+      <article><h4>Quem decide é a luz</h4><p>Ao chegar nos 42 cliques, o LED daquele jogador acende e os dois motores param no mesmo instante. Não é quem cruza a linha primeiro: é quem acende primeiro.</p></article>
+      <article><h4>A volta é calculada</h4><p>O código guarda quanto cada motor girou para frente e devolve exatamente isso para trás, descontando o giro que foi cortado na hora da vitória. Por isso os carrinhos param na largada.</p></article>
+    </div>
+
+    <div class="cod-caixa reveal">
+      <header>
+        <span class="arq">velozes-e-maldosos.ino</span>
+        <div class="cod-acoes">
+          <button id="copiarCod" type="button">Copiar</button>
+          <a href="velozes-e-maldosos.ino" download>Baixar .ino</a>
+          <a href="https://github.com/mlauradmello/velozes-e-maldosos/blob/main/velozes-e-maldosos.ino" target="_blank" rel="noopener">Ver no GitHub</a>
+        </div>
+      </header>
+      <pre id="codFonte"><code>Carregando o código…</code></pre>
+    </div>
+  </div>
+</section>
+
 <section id="fotos">
   <div class="wrap">
     <div class="sec-head reveal">
-      <p class="eyebrow">04 — <b>O protótipo real</b></p>
+      <p class="eyebrow">05 — <b>O protótipo real</b></p>
       <h2>Fora do 3D, <i>em cima da mesa</i>.</h2>
     </div>
     <div class="gallery reveal">
@@ -2006,6 +2066,48 @@ document.addEventListener('visibilitychange', ()=>{
 });
 // tocar na cortina adianta a abertura
 palcoEl.addEventListener('pointerdown', abrirCortina);
+
+/* ---------- a seção do código ----------
+   O código mostrado é o próprio arquivo .ino que está no repositório: em vez
+   de copiá-lo para dentro desta página (e arriscar as duas versões ficarem
+   diferentes), buscamos o arquivo e pintamos aqui. */
+{
+  const bloco = document.querySelector('#codFonte code');
+  const PALAVRAS = /\b(const|int|unsigned|long|float|bool|void|if|else|for|while|return|break|sizeof|true|false|HIGH|LOW|INPUT_PULLUP|OUTPUT|pinMode|digitalRead|digitalWrite|analogWrite|delay|millis|tone|noTone|Serial)\b/g;
+  const esc = s => s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  // pinta só o que é código; comentários e textos saem inteiros, sem retoque
+  const codigo = s => esc(s)
+    .replace(PALAVRAS, '<span class="k">$&</span>')
+    .replace(/\b\d+(\.\d+)?\b/g, '<span class="n">$&</span>');
+  function pintar(txt){
+    const re = /(\/\/[^\n]*|"[^"\n]*")/g;
+    let saida = '', fim = 0, m;
+    while((m = re.exec(txt))){
+      saida += codigo(txt.slice(fim, m.index));
+      saida += '<span class="' + (m[0][0] === '/' ? 'c' : 's') + '">' + esc(m[0]) + '</span>';
+      fim = re.lastIndex;
+    }
+    return saida + codigo(txt.slice(fim));
+  }
+  let fonte = '';
+  fetch('velozes-e-maldosos.ino')
+    .then(r=>{ if(!r.ok) throw 0; return r.text(); })
+    .then(txt=>{ fonte = txt; bloco.innerHTML = pintar(txt); })
+    .catch(()=>{ bloco.textContent =
+      'Não consegui carregar o arquivo aqui. Ele está inteiro no GitHub, no botão acima.'; });
+
+  const botao = document.getElementById('copiarCod');
+  botao.addEventListener('click', async ()=>{
+    if(!fonte) return;
+    try{
+      await navigator.clipboard.writeText(fonte);
+      botao.textContent = 'Copiado!';
+    }catch(e){
+      botao.textContent = 'Use o botão baixar';
+    }
+    setTimeout(()=>botao.textContent = 'Copiar', 1800);
+  });
+}
 
 /* reveals */
 const io = new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} }), {threshold:.12});
